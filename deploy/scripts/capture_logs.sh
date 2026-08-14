@@ -45,4 +45,4 @@ fi
 
 echo ""
 echo "Agora rode:"
-echo "  python3 /opt/data/workspace/hermes-whatsapp-mixed/deploy/scripts/diagnose_bridge_dedup.py $OUT"
+echo "  python3 /opt/data/workspace/whatsappkit/deploy/scripts/diagnose_bridge_dedup.py $OUT"

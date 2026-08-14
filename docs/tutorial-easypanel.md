@@ -96,7 +96,7 @@ O warning é esperado — ainda não pareamos o WhatsApp.
 Abra o **Console** do serviço `hermes` no Easypanel e execute:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/empreendedorserial/hermes-whatsapp-mixed/main/deploy/setup.sh | bash -s empreendedorserial
+curl -sSL https://raw.githubusercontent.com/leoalvesia/whatsappkit/main/deploy/setup.sh | bash -s leoalvesia
 ```
 
 O script vai:
@@ -198,7 +198,7 @@ Envie para **você mesmo** (self-chat). Todos os comandos funcionam exclusivamen
 Quando houver uma nova versão do plugin, atualize assim no console do container:
 
 ```bash
-cd /opt/data/workspace/hermes-whatsapp-mixed && git pull origin main
+cd /opt/data/workspace/whatsappkit && git pull origin main
 cp whatsapp_manager.py /opt/data/.hermes/plugins/whatsapp-manager/whatsapp_manager.py
 ```
 
@@ -239,4 +239,4 @@ Edite diretamente no GitHub (no seu repositório privado de configuração) e ro
 
 ---
 
-*Desenvolvido por [André Alencar](https://aalencar.com.br) — [Repositório no GitHub](https://github.com/empreendedorserial/hermes-whatsapp-mixed)*
+*Desenvolvido por [André Alencar](https://aalencar.com.br) — [Repositório no GitHub](https://github.com/leoalvesia/whatsappkit)*

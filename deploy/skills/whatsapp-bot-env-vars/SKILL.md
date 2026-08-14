@@ -95,7 +95,7 @@ pre_llm_call → aplica persona (Modo A = André, Modo B = Cliente)
 
 ## Arquivos de Configuração
 
-### Docker-compose (`/opt/data/workspace/hermes-whatsapp-mixed/docker-compose.yml`)
+### Docker-compose (`/opt/data/workspace/whatsappkit/docker-compose.yml`)
 Template da stack. Variáveis SEM fallback hardcoded — o valor real vem só do Portainer:
 ```yaml
 environment:
@@ -244,7 +244,7 @@ print(format_history_for_context(msgs, '558681612061'))
 
 ## GitHub Repo
 
-O código está em: https://github.com/empreendedorserial/hermes-whatsapp-bot
+O código está em: https://github.com/leoalvesia/hermes-whatsapp-bot
 
 **⚠️ Limitação de Visão (MiniMax) — Fix Aplicado (2 partes)**
 

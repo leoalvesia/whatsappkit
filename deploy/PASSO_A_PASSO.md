@@ -10,7 +10,7 @@ Usaremos um método super moderno: **você editará seus dados visualmente no se
 
 Todo o treinamento do robô e alteração de regras é feito de forma visual diretamente na interface do seu GitHub!
 
-1. Na página do repositório oficial (`github.com/empreendedorserial/hermes-whatsapp-mixed`), clique no botão **Fork** (canto superior direito) para criar uma cópia dele na sua própria conta do GitHub.
+1. Na página do repositório oficial (`github.com/leoalvesia/whatsappkit`), clique no botão **Fork** (canto superior direito) para criar uma cópia dele na sua própria conta do GitHub.
 2. No seu repositório pessoal recém-criado, edite os arquivos diretamente pelo seu navegador (clicando no ícone de lápis ✏️):
    * 📄 **`support_rules.md`**: Coloque as informações da sua empresa, preços, links de checkout (Kiwify, Hotmart, etc.) e formas de suporte. Clique em **Commit changes** para salvar.
    * 📄 **`SOUL.md`**: Personalize o tom e o comportamento do robô se desejar. Clique em **Commit changes** para salvar.
@@ -51,7 +51,7 @@ Agora faremos seu servidor puxar as regras que você salvou no seu GitHub no Pas
 4. **Substitua `SEU_USUARIO_GITHUB` pelo seu usuário real do GitHub** no comando abaixo, cole-o no terminal e aperte **Enter**:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/SEU_USUARIO_GITHUB/hermes-whatsapp-mixed/main/deploy/setup.sh | bash -s SEU_USUARIO_GITHUB
+curl -sSL https://raw.githubusercontent.com/SEU_USUARIO_GITHUB/whatsappkit/main/deploy/setup.sh | bash -s SEU_USUARIO_GITHUB
 ```
 
 > **Sincronização Ativa:** O seu servidor baixou a persona (`SOUL.md`) e regras de vendas (`support_rules.md`) direto do seu GitHub pessoal, configurou o `config.yaml` e corrigiu a ponte do WhatsApp. Plugins ficam para o dashboard do Hermes.
@@ -66,7 +66,7 @@ Se você quer salvar seus contatos pessoais (`personal_contacts.json`) ou suas p
 
 1. Crie um repositório **privado** no seu GitHub (ex: `hermes-config-privado`).
 2. Adicione nele os arquivos que deseja manter seguros:
-   * 📄 **`personal_contacts.json`** (Use o modelo de exemplo disponível em [personal_contacts.json.example](file:///Users/andrealencar/GoogleAntigravity/hermes-whatsapp-mixed/deploy/personal_contacts.json.example) como base).
+   * 📄 **`personal_contacts.json`** (Use o modelo de exemplo disponível em [personal_contacts.json.example](file:///Users/andrealencar/GoogleAntigravity/whatsappkit/deploy/personal_contacts.json.example) como base).
    * 📄 **`SOUL.md`**, **`SOUL_WHATSAPP.md`**, **`SOUL_EMAIL.md`**, **`support_rules.md`** (opcionais, se você preferir não deixá-los expostos no seu fork público).
 3. Gere um **Personal Access Token (PAT)** no GitHub com permissão de leitura de repositório (`repo`).
 4. Diferenciamos as chaves do **Cliente** (configuradas visualmente na Stack do Portainer) das chaves do **Desenvolvedor** (mantidas no arquivo `.env` local por segurança):
@@ -80,7 +80,7 @@ Se você quer salvar seus contatos pessoais (`personal_contacts.json`) ou suas p
 5. Conecte-se ao console do container no Portainer e execute a sincronização de 1 clique. Como as variáveis já estão configuradas no painel da Stack e no `.env`, basta rodar:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/SEU_USUARIO_GITHUB/hermes-whatsapp-mixed/main/deploy/setup.sh | bash -s SEU_USUARIO_GITHUB
+curl -sSL https://raw.githubusercontent.com/SEU_USUARIO_GITHUB/whatsappkit/main/deploy/setup.sh | bash -s SEU_USUARIO_GITHUB
 ```
 
 O script baixará os arquivos de código público do seu fork e puxará automaticamente as configurações e contatos do repositório privado do cliente de forma isolada e segura.

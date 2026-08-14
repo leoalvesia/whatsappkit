@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-PLUGIN_PATH = Path("/opt/data/workspace/hermes-whatsapp-mixed/whatsapp_manager.py")
+PLUGIN_PATH = Path("/opt/data/workspace/whatsappkit/whatsapp_manager.py")
 PC_PATH = Path("/opt/data/personal_contacts.json")
 HERMES_HOME = os.getenv("HERMES_HOME", "/opt/data/.hermes")
 

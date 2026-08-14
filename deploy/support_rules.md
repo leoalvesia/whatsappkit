@@ -158,7 +158,7 @@ Se o cliente pedir links de tutoriais específicos do canal, envie diretamente:
   1. Explique de forma amigável e acolhedora que recebemos a mensagem, mas que o nosso suporte comercial está atualmente fechado (atendimento de segunda a sexta, das 8h às 18h).
   2. Garanta ao cliente que o e-mail dele foi registrado e que daremos retorno com prioridade total no próximo dia útil.
   3. Indique os canais alternativos abaixo se precisarem de ajuda imediata ou compartilhada:
-     - **Atendimento 24h por Inteligência Artificial:** Direct no nosso Instagram [@empreendedorserialbr](https://instagram.com/empreendedorserialbr).
+     - **Atendimento 24h por Inteligência Artificial:** Direct no nosso Instagram [@leoalvesiabr](https://instagram.com/leoalvesiabr).
      - **Comunidade com Vídeos dos Problemas Recorrentes:** Acesse o nosso portal [comunidade.aalencar.com.br](https://comunidade.aalencar.com.br).
      - **Para dúvidas técnicas de código ou bugs:** Comentar diretamente sob o respectivo vídeo do YouTube.
 

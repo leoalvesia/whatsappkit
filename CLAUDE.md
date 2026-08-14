@@ -93,7 +93,7 @@ O runbook completo está em `.gemini/skills/deploy-plugin/SKILL.md` (escrito par
 
 O repositório está costurado com dados do autor original. Antes de subir uma instância para outro cliente, troque:
 
-- **`HERMES_SETUP_GITHUB_USER`** (ou `DEV_GITHUB_USER`) — o plugin baixa código e personas de `https://raw.githubusercontent.com/$USER/hermes-whatsapp-mixed/main/...` em runtime e se auto-atualiza a partir dali. O default é `empreendedorserial` em ~10 pontos de `whatsapp_manager.py` e em `deploy/setup.sh:83`. Sem trocar, a instância do cliente puxa código do repositório original e sobrescreve customizações. Atenção: `whatsapp_manager.py:7347` tem a URL **fixa** com `empreendedorserial`, ignorando a variável.
+- **`HERMES_SETUP_GITHUB_USER`** (ou `DEV_GITHUB_USER`) — o plugin baixa código e personas de `https://raw.githubusercontent.com/$USER/whatsappkit/main/...` em runtime e se auto-atualiza a partir dali. Este fork já tem o default trocado para `leoalvesia` em ~10 pontos de `whatsapp_manager.py` e em `deploy/setup.sh:28`; o nome do repositório (`whatsappkit`) é literal em `whatsapp_manager.py:3788,3804,7347,7378,7439` e `deploy/setup.sh:83`. Atenção: `whatsapp_manager.py:7347` tem a URL **inteira fixa**, ignorando a variável de ambiente — se um cliente usar outro usuário GitHub, essa linha precisa de patch também.
 - `WHATSAPP_OWNER_NUMBER` / `WHATSAPP_OWNER_NAME` / `WHATSAPP_CONNECTION_NAME` — `deploy/.env.example` vem com o número real do autor.
 - `CONFIG_REPO` + `CONFIG_GITHUB_TOKEN` — repositório privado de contatos, um por cliente.
 - `GOOGLE_API_KEY` e os `WHATSAPP_*_MODEL`.

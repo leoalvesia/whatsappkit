@@ -15,7 +15,7 @@
 #   /opt/data/.hermes/plugins/  → plugins carregados pelo gateway
 #   /opt/data/.hermes/platforms/whatsapp/bridge/bridge.js  → bridge Node.js
 #   /opt/data/.hermes/platforms/whatsapp/session/          → sessão WhatsApp
-#   /opt/data/workspace/        → repositórios clonados (ex: hermes-whatsapp-mixed)
+#   /opt/data/workspace/        → repositórios clonados (ex: whatsappkit)
 # ==============================================================================
 #
 # ██████████████████████████████████████████████████████████████████████████████
@@ -117,7 +117,7 @@
 #
 # 🛠️ SETUP INICIAL (após o primeiro deploy):
 #   1. Acesse o Console do serviço no Easypanel
-#   2. Execute: curl -sSL https://raw.githubusercontent.com/empreendedorserial/hermes-whatsapp-mixed/main/deploy/setup.sh | bash -s empreendedorserial
+#   2. Execute: curl -sSL https://raw.githubusercontent.com/leoalvesia/whatsappkit/main/deploy/setup.sh | bash -s leoalvesia
 #   3. O setup.sh clona o workspace e instala o plugin em /opt/data (volume persistido)
 #
 # 📱 PAREAR O WHATSAPP (primeiro acesso):
@@ -217,7 +217,7 @@ services:
       - HERMES_DASHBOARD_TUI=1
 
       # Sincronização de contexto via GitHub
-      - HERMES_SETUP_GITHUB_USER=${HERMES_SETUP_GITHUB_USER:-empreendedorserial}
+      - HERMES_SETUP_GITHUB_USER=${HERMES_SETUP_GITHUB_USER:-leoalvesia}
       - CONFIG_REPO=${CONFIG_REPO:-hermes_agent_context_contatcs}
       - CONFIG_GITHUB_TOKEN=${CONFIG_GITHUB_TOKEN:-}
 

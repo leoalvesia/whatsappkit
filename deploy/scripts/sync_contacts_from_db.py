@@ -117,7 +117,7 @@ def main():
             repo_user = repo_parts[0]
             repo_name = repo_parts[1]
         else:
-            repo_user = setup_user or "empreendedorserial"
+            repo_user = setup_user or "leoalvesia"
             repo_name = config_repo
 
         print(f"📤 Enviando atualização de personal_contacts.json para o GitHub ({repo_user}/{repo_name})...")

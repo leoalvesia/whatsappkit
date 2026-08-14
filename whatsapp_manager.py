@@ -124,7 +124,7 @@ class PluginConfig:
 
     @property
     def github_user(self) -> str:
-        return (self.hermes_setup_github_user or self.dev_github_user or "empreendedorserial").strip()
+        return (self.hermes_setup_github_user or self.dev_github_user or "leoalvesia").strip()
 
     @property
     def whatsapp_owner_number(self) -> str:
@@ -2475,7 +2475,7 @@ def _sync_contacts_from_db_internal(force: bool = True) -> str:
             repo_user = repo_parts[0]
             repo_name = repo_parts[1]
         else:
-            repo_user = setup_user or "empreendedorserial"
+            repo_user = setup_user or "leoalvesia"
             repo_name = config_repo
 
         try:
@@ -3062,7 +3062,7 @@ def _update_soul_whatsapp_with_examples(style_section: str) -> bool:
                 repo_parts = config_repo.split("/")
                 repo_user, repo_name = repo_parts[0], repo_parts[1]
             else:
-                repo_user = config.hermes_setup_github_user or "empreendedorserial"
+                repo_user = config.hermes_setup_github_user or "leoalvesia"
                 repo_name = config_repo
 
             from datetime import datetime
@@ -3101,7 +3101,7 @@ def _github_put_file(
     """Sobe um arquivo para o GitHub via API REST (GET sha → PUT content).
 
     Args:
-        repo_user: Dono do repositório (ex: "empreendedorserial").
+        repo_user: Dono do repositório (ex: "leoalvesia").
         repo_name: Nome do repositório.
         token: Token de acesso pessoal do GitHub.
         github_path: Caminho do arquivo no repositório (ex: "personal_contacts.json").
@@ -3538,7 +3538,7 @@ def _push_personal_contacts_to_github() -> bool:
         repo_user = repo_parts[0]
         repo_name = repo_parts[1]
     else:
-        repo_user = setup_user or "empreendedorserial"
+        repo_user = setup_user or "leoalvesia"
         repo_name = config_repo
 
     try:
@@ -3627,7 +3627,7 @@ def _pull_and_merge_configurations():
         repo_user = repo_parts[0]
         repo_name = repo_parts[1]
     else:
-        repo_user = setup_user or dev_user or "empreendedorserial"
+        repo_user = setup_user or dev_user or "leoalvesia"
         repo_name = config_repo
 
     config_base_url = f"https://raw.githubusercontent.com/{repo_user}/{repo_name}/main"
@@ -3785,7 +3785,7 @@ def _self_update_plugin_code() -> bool:
     github_user = config.github_user
     code_token = config.dev_github_token
 
-    raw_root = f"https://raw.githubusercontent.com/{github_user}/hermes-whatsapp-mixed/main"
+    raw_root = f"https://raw.githubusercontent.com/{github_user}/whatsappkit/main"
     plugin_dir = Path("/opt/data/.hermes/plugins/whatsapp-manager")
 
     # NUNCA usar Path(__file__).parent como fallback — isso gravaria dentro do
@@ -3801,7 +3801,7 @@ def _self_update_plugin_code() -> bool:
     if (plugin_dir / ".git").exists():
         try:
             import subprocess
-            git_url = f"https://github.com/{github_user}/hermes-whatsapp-mixed.git"
+            git_url = f"https://github.com/{github_user}/whatsappkit.git"
             
             # Fetch origin main using the token header if available
             fetch_cmd = ["git"]
@@ -4145,7 +4145,7 @@ def _save_product_catalog(catalog: dict) -> None:
             if "/" in config_repo:
                 repo_user, repo_name = config_repo.split("/", 1)
             else:
-                repo_user = setup_user or "empreendedorserial"
+                repo_user = setup_user or "leoalvesia"
                 repo_name = config_repo
             return _github_put_file(
                 repo_user=repo_user,
@@ -4439,7 +4439,7 @@ def _save_sales(sales: dict) -> None:
             if "/" in config_repo:
                 repo_user, repo_name = config_repo.split("/", 1)
             else:
-                repo_user = setup_user or "empreendedorserial"
+                repo_user = setup_user or "leoalvesia"
                 repo_name = config_repo
             return _github_put_file(
                 repo_user=repo_user,
@@ -5398,7 +5398,7 @@ def _live_classify_contact(
             if config_repo and config_token:
                 repo_user, repo_name = (
                     config_repo.split("/") if "/" in config_repo
-                    else (setup_user or dev_user or "empreendedorserial", config_repo)
+                    else (setup_user or dev_user or "leoalvesia", config_repo)
                 )
                 _github_put_file(
                     repo_user=repo_user, repo_name=repo_name, token=config_token,
@@ -7275,7 +7275,7 @@ def register(ctx):
                     repo_user = repo_parts[0]
                     repo_name = repo_parts[1]
                 else:
-                    repo_user = setup_user or "empreendedorserial"
+                    repo_user = setup_user or "leoalvesia"
                     repo_name = config_repo
 
                 repo_url = f"https://api.github.com/repos/{repo_user}/{repo_name}"
@@ -7344,7 +7344,7 @@ def register(ctx):
                                     )
                                     time.sleep(3) # Aguarda o GitHub provisionar o branch main
 
-                                    raw_base = "https://raw.githubusercontent.com/empreendedorserial/hermes-whatsapp-mixed/main/deploy"
+                                    raw_base = "https://raw.githubusercontent.com/leoalvesia/whatsappkit/main/deploy"
                                     commit_file_to_repo(repo_user, repo_name, config_token, "/opt/data/SOUL.md", "SOUL.md", f"{raw_base}/SOUL.md")
                                     commit_file_to_repo(repo_user, repo_name, config_token, "/opt/data/SOUL_WHATSAPP.md", "SOUL_WHATSAPP.md", f"{raw_base}/SOUL_WHATSAPP.md")
                                     commit_file_to_repo(repo_user, repo_name, config_token, "/opt/data/SOUL_EMAIL.md", "SOUL_EMAIL.md", f"{raw_base}/SOUL_EMAIL.md")
@@ -7375,7 +7375,7 @@ def register(ctx):
 
         # 3. Bootstrap automático de personas e regras (se ausentes no volume)
         github_user = config.github_user
-        raw_base_url = f"https://raw.githubusercontent.com/{github_user}/hermes-whatsapp-mixed/main/deploy"
+        raw_base_url = f"https://raw.githubusercontent.com/{github_user}/whatsappkit/main/deploy"
 
         personal_contacts_path = Path("/opt/data/personal_contacts.json")
         if not personal_contacts_path.exists():
@@ -7436,7 +7436,7 @@ def register(ctx):
         else:
             # Fallback: baixar do GitHub se não estiver bundled
             github_user = config.github_user
-            google_api_url = f"https://raw.githubusercontent.com/{github_user}/hermes-whatsapp-mixed/main/deploy/scripts/google_api.py"
+            google_api_url = f"https://raw.githubusercontent.com/{github_user}/whatsappkit/main/deploy/scripts/google_api.py"
             if not target_google_api.exists():
                 try:
                     with urllib.request.urlopen(google_api_url, timeout=10) as resp:

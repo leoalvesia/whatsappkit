@@ -6,7 +6,7 @@ Injeta um patch em whatsapp_manager para logar cada messageId recebido
 e contar duplicatas. Lê o log em tempo real e exibe um resumo.
 
 Uso no container hermes:
-    python3 /opt/data/workspace/hermes-whatsapp-mixed/deploy/scripts/diagnose_bridge_dedup.py
+    python3 /opt/data/workspace/whatsappkit/deploy/scripts/diagnose_bridge_dedup.py
 
 Ctrl+C para parar e ver o resumo.
 """

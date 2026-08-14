@@ -1,4 +1,4 @@
-# Melhorias Futuras — hermes-whatsapp-mixed
+# Melhorias Futuras — whatsappkit
 
 Documento gerado em 2026-06-19 após análise completa do código.
 

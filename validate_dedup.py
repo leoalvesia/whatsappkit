@@ -3,7 +3,7 @@
 Valida o mecanismo de dedup de respostas duplicadas no plugin whatsapp_manager.
 
 Execução no container Hermes:
-    python3 /opt/data/workspace/hermes-whatsapp-mixed/validate_dedup.py
+    python3 /opt/data/workspace/whatsappkit/validate_dedup.py
 
 Cobre:
     1. Session-level dedup: mesma session_id não envia duas vezes
