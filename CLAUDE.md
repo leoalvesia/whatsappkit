@@ -15,8 +15,10 @@ Licença **BUSL-1.1** (Licensor: André Alencar, Change Date 2031-06-25 → MIT)
 ```bash
 npm install                                   # deps do bridge (package-lock.json é gitignorado de propósito)
 npm test                                      # suíte completa: node --test tests/bridge.test.js && python3 -m unittest tests/plugin_test.py
-python3 -m unittest tests/plugin_test.py      # só Python (311 testes, 48 classes)
-node --test tests/bridge.test.js              # só o bridge
+python3 -m unittest tests/plugin_test.py      # só Python (312 testes, 49 classes)
+node --test tests/bridge.test.js              # só o bridge (23 asserções; o processo
+                                              # não encerra sozinho: importar bridge.js
+                                              # sobe o Express na 3000)
 python3 validate_dedup.py                     # validação de dedup (roda dentro do container)
 ```
 
@@ -91,14 +93,29 @@ O runbook completo está em `.gemini/skills/deploy-plugin/SKILL.md` (escrito par
 
 ## Ao replicar este kit para outro cliente
 
-O repositório está costurado com dados do autor original. Antes de subir uma instância para outro cliente, troque:
+Tudo o que muda por cliente é **variável de ambiente**. Não edite código para trocar de cliente — se você se pegar fazendo isso, é sinal de que falta parametrizar algo.
 
-- **`HERMES_SETUP_GITHUB_USER`** (ou `DEV_GITHUB_USER`) — o plugin baixa código e personas de `https://raw.githubusercontent.com/$USER/whatsappkit/main/...` em runtime e se auto-atualiza a partir dali. Este fork já tem o default trocado para `leoalvesia` em ~10 pontos de `whatsapp_manager.py` e em `deploy/setup.sh:28`; o nome do repositório (`whatsappkit`) é literal em `whatsapp_manager.py:3788,3804,7347,7378,7439` e `deploy/setup.sh:83`. Atenção: `whatsapp_manager.py:7347` tem a URL **inteira fixa**, ignorando a variável de ambiente — se um cliente usar outro usuário GitHub, essa linha precisa de patch também.
-- `WHATSAPP_OWNER_NUMBER` / `WHATSAPP_OWNER_NAME` / `WHATSAPP_CONNECTION_NAME` — `deploy/.env.example` vem com o número real do autor.
-- `CONFIG_REPO` + `CONFIG_GITHUB_TOKEN` — repositório privado de contatos, um por cliente.
-- `GOOGLE_API_KEY` e os `WHATSAPP_*_MODEL`.
-- `deploy/SOUL.md`, `deploy/SOUL_WHATSAPP.md`, `deploy/SOUL_EMAIL.md`, `deploy/support_rules.md`, `deploy/personal_contacts.json.example`.
-- O nome "André" aparece hardcoded em ~69 pontos de `whatsapp_manager.py` (prompts e o nome da função `_collect_andre_messages_by_relationship`) e em ~30 outros arquivos.
+| Variável | Para que serve |
+|---|---|
+| `WHATSAPP_OWNER_NAME` | Nome do dono nos prompts, via `_owner_name()`. `_owner_name_norms()` e `_is_owner_name()` derivam dele as variações usadas para reconhecer as mensagens do dono no histórico |
+| `WHATSAPP_OWNER_NUMBER` | Número sem `+`. Também lido pelo `bridge.js` |
+| `WHATSAPP_PIX_KEY` | Chave Pix quando o item do catálogo não define a sua. **Sem default de propósito** — errar aqui manda o pagamento do cliente para a conta errada |
+| `OPENROUTER_API_KEY` | Provider padrão. Deixe `GOOGLE_API_KEY` e `OPENAI_API_KEY` **vazias**: a cadeia é Google → OpenAI → OpenRouter e para na primeira chave preenchida |
+| `WHATSAPP_*_MODEL` / `*_PROVIDER` | Slugs do OpenRouter (`vendor/modelo`). Texto usa `deepseek/deepseek-v4-flash`; mídia precisa de modelo multimodal (`google/gemini-3.1-flash-lite`) porque o DeepSeek aceita só texto |
+| `CONFIG_REPO` + `CONFIG_GITHUB_TOKEN` | Opcional — versiona contatos e personas num repo privado |
+| `HERMES_SETUP_GITHUB_USER` | Dono do repositório de onde o plugin se atualiza |
+
+Fora as envs, só os arquivos de conteúdo: `deploy/SOUL.md`, `SOUL_WHATSAPP.md`, `SOUL_EMAIL.md` e `support_rules.md` são **templates com placeholders `{{...}}`**. Preencha antes de subir — placeholder não substituído vai literal para o cliente, e um `support_rules.md` com produto errado faz o bot inventar oferta que não existe.
+
+**Ainda embutem o nome do repositório:** `whatsapp_manager.py:3788, 3804, 7347, 7378, 7439` e `deploy/setup.sh:83`. E `whatsapp_manager.py:7347` embute a URL **inteira**, ignorando `HERMES_SETUP_GITHUB_USER` — um cliente com outro usuário GitHub precisa de patch nessa linha.
+
+## Como o código chega na VPS
+
+O `command:` do `deploy/docker-compose.easypanel.yml` faz `git clone` (ou `fetch` + `reset --hard`) do repositório a cada boot. Fluxo de atualização: `git push` na `main` → restart do serviço no EasyPanel.
+
+Duas decisões deliberadas nesse bloco:
+- **É clone, não download de arquivos avulsos.** O `setup.sh` original baixava 9 arquivos individuais e não criava `.git`, o que fazia `_self_update_plugin_code()` cair no fallback de lista fixa — arquivos novos nunca chegavam.
+- **O perfil de isolamento é escrito pelo compose, não pelo repositório clonado.** Se o clone falhar, o container sobe seguro em vez de liberar terminal e leitura de arquivos para quem manda mensagem.
 
 ## Pareamento e status
 
