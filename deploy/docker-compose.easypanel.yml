@@ -1,0 +1,243 @@
+# ==============================================================================
+# 📋 STACK: HERMES AGENT — EASYPANEL
+# ==============================================================================
+# Importe este arquivo no Easypanel via:
+#   Projeto > New Service > Compose (cole o conteúdo deste arquivo)
+#
+# Container único: o Hermes gerencia o processo bridge internamente.
+#   Diferente do Portainer (Swarm), aqui não há whatsapp-bridge separado.
+#   O gateway spawna bridge.js como subprocesso quando WHATSAPP_ENABLED=true.
+#
+# Sem Traefik: roteamento feito pelo proxy reverso nativo do Easypanel.
+#   Configure os domínios na aba "Domains & Proxy" do serviço.
+#
+# Volume compartilhado: hermes_data → /opt/data
+#   /opt/data/.hermes/plugins/  → plugins carregados pelo gateway
+#   /opt/data/.hermes/platforms/whatsapp/bridge/bridge.js  → bridge Node.js
+#   /opt/data/.hermes/platforms/whatsapp/session/          → sessão WhatsApp
+#   /opt/data/workspace/        → repositórios clonados (ex: hermes-whatsapp-mixed)
+# ==============================================================================
+#
+# ██████████████████████████████████████████████████████████████████████████████
+# ▶ VARIÁVEIS INDISPENSÁVEIS — sem estas a stack não funciona
+# ⚠️  EASYPANEL: marque "Criar arquivo .env" na aba Ambiente antes de implantar
+#     Sem isso o container ignora todas as variáveis abaixo e falha ao iniciar.
+# ██████████████████████████████████████████████████████████████████████████████
+#
+# 🔑 AUTENTICAÇÃO DA API (obrigatória — sem default)
+#   API_SERVER_KEY         Chave secreta para autenticar chamadas à API do Hermes
+#                          Gerar: openssl rand -hex 32
+#
+# 🔒 SEGURANÇA DO DASHBOARD (obrigatória — sem default)
+#   O Dashboard expõe terminal, logs e conversas — NUNCA deixe público
+#   Easypanel: ative "Password Protection" na aba "Domains & Proxy" (porta 9119)
+#   Não requer variável de ambiente — configure diretamente no proxy do Easypanel
+#
+# 🤖 PROVIDER DE IA (obrigatória na prática)
+#   GOOGLE_API_KEY         Chave da Google AI Studio / Vertex AI
+#                          → todos os modelos padrão usam gemini-3.1-flash-lite
+#                            via provider "gemini"; sem esta chave o bot não responde
+#
+# 🟢 WHATSAPP — obrigatórias para o bot funcionar
+#   WHATSAPP_ENABLED       Deve ser definida explicitamente como "true" (padrão do compose)
+#                          → defina "false" apenas antes de parear pela primeira vez;
+#                            volte para "true" após parear e reiniciar
+#   WHATSAPP_OWNER_NUMBER  Número do dono no formato internacional sem + (ex: 5511999999999)
+#   WHATSAPP_OWNER_NAME    Nome do dono usado nos prompts e respostas (ex: André)
+#
+# 📦 SINCRONIZAÇÃO DE CONTEXTO VIA GITHUB (obrigatória na prática)
+#   CONFIG_GITHUB_TOKEN    Token GitHub (PAT) com acesso de leitura ao CONFIG_REPO
+#                          → sem ele, personal_contacts.json e SOUL_WHATSAPP.md
+#                            não são sincronizados; o bot sobe mas opera sem contexto
+#
+# ██████████████████████████████████████████████████████████████████████████████
+# ▶ VARIÁVEIS OPCIONAIS
+# ██████████████████████████████████████████████████████████████████████████████
+#
+# 🤖 PROVIDERS ALTERNATIVOS DE IA
+#   OPENAI_API_KEY         Chave da OpenAI (GPT-4, etc.)
+#   ANTHROPIC_API_KEY      Chave da Anthropic (Claude)
+#   OPENROUTER_API_KEY     Chave da OpenRouter (acesso multi-provider)
+#   AISA_API_KEY           Chave da AISA (provider de IA)
+#
+# 🤖 MODELOS POR FUNÇÃO (padrão: gemini-3.1-flash-lite / provider: gemini)
+#   WHATSAPP_OWNER_MODEL          Modelo para responder ao dono
+#   WHATSAPP_OWNER_PROVIDER       Provider do modelo do dono
+#   WHATSAPP_CLIENT_MODEL         Modelo para responder a clientes/desconhecidos
+#   WHATSAPP_CLIENT_PROVIDER      Provider do modelo de clientes
+#   WHATSAPP_CLIENT_MEDIA_MODEL   Modelo para transcrição/análise de mídia
+#   WHATSAPP_CONTACT_CLASSIFIER_MODEL  Modelo para classificar novos contatos
+#
+# 💬 TELEGRAM
+#   TELEGRAM_BOT_TOKEN     Token do bot criado no BotFather
+#   TELEGRAM_ALLOWED_USERS IDs Telegram autorizados (ex: "12345678,98765432")
+#   GATEWAY_ALLOW_ALL_USERS Permitir qualquer usuário interagir (padrão: false)
+#
+# 🟢 WHATSAPP — configurações adicionais
+#   WHATSAPP_ENABLED       Habilitar WhatsApp (padrão: true — deixe false até parear)
+#   WHATSAPP_MODE          Modo de operação (padrão: bot)
+#   WHATSAPP_ALLOWED_USERS Números autorizados a interagir (padrão: * = todos)
+#   WHATSAPP_CONNECTION_NAME Nome da conexão exibido no Dashboard (padrão: EmpreendedorSerial)
+#
+# ⏳ DEBOUNCE DE MENSAGENS (agrupa fragmentos de texto antes de processar)
+#   WHATSAPP_DEBOUNCE_INITIAL_MS      Espera inicial em ms antes de processar (padrão: 15000)
+#   WHATSAPP_DEBOUNCE_MIN_MS          Piso do decaimento progressivo em ms (padrão: 2000)
+#   WHATSAPP_DEBOUNCE_DECAY           Fator de decaimento a cada fragmento novo (padrão: 0.6)
+#   WHATSAPP_DEBOUNCE_SKIP_SELF_CHAT  Pular debounce no self-chat do dono (padrão: true)
+#
+# 🔑 GOOGLE CLOUD / OAUTH
+#   GOOGLE_CLIENT_ID       Client ID para autenticação OAuth (Calendar, Drive, etc.)
+#   GOOGLE_CLIENT_SECRET   Client Secret correspondente
+#
+# 📦 SINCRONIZAÇÃO DE CONTEXTO VIA GITHUB
+#   HERMES_SETUP_GITHUB_USER  Usuário GitHub dono do repositório de configuração
+#   CONFIG_REPO               Nome do repositório com contextos/contatos (padrão: hermes_agent_context_contatcs)
+#
+# ⏱️ TIMEOUTS E OUTROS
+#   TZ                         Fuso horário (padrão: America/Sao_Paulo)
+#   MAX_TURNS                  Máximo de iterações por resposta — controla custo (padrão: 8)
+#   HERMES_API_TIMEOUT         Timeout total da API em segundos (padrão: 1800)
+#   HERMES_API_CALL_STALE_TIMEOUT  Timeout de chamada inativa (padrão: 300)
+#   API_SERVER_CORS_ORIGINS    Origens CORS permitidas (padrão: *)
+#
+# 🔒 AUTENTICAÇÃO DO DASHBOARD (Easypanel)
+#   O Easypanel não usa Traefik — proteja o Dashboard pelo proxy nativo:
+#   Na aba "Domains & Proxy" do serviço, ative "Password Protection" no domínio da porta 9119.
+#   Defina usuário e senha diretamente no Easypanel (sem necessidade de gerar hash).
+#   → o Dashboard expõe terminal, logs e conversas — NUNCA deixe público
+#
+# 🌐 DOMÍNIOS — configure na aba "Domains & Proxy" do serviço hermes no Easypanel:
+#   Porta 8642 → API REST       (ex: hermes-api.seu-dominio.com)
+#   Porta 9119 → Dashboard + WebSocket (/api/ws, /api/events, /api/pty)
+#              → inclui também /whatsapp/qr e /whatsapp/status (proxy para a bridge)
+#
+# ⚠️  ATENÇÃO — EASYPANEL: para as variáveis de ambiente funcionarem você DEVE
+#   marcar a opção "Criar arquivo .env" na aba "Ambiente" antes de implantar.
+#   Sem isso o container ignora as variáveis e falha ao iniciar.
+#
+# 🛠️ SETUP INICIAL (após o primeiro deploy):
+#   1. Acesse o Console do serviço no Easypanel
+#   2. Execute: curl -sSL https://raw.githubusercontent.com/empreendedorserial/hermes-whatsapp-mixed/main/deploy/setup.sh | bash -s empreendedorserial
+#   3. O setup.sh clona o workspace e instala o plugin em /opt/data (volume persistido)
+#
+# 📱 PAREAR O WHATSAPP (primeiro acesso):
+#   ⚠️  A URL /whatsapp/qr é para RECONEXÃO — não funciona no primeiro pareamento.
+#   Para o primeiro pareamento:
+#   1. Defina WHATSAPP_ENABLED=false → Implantar (mantém o container estável)
+#   2. Abra o Console → execute: hermes whatsapp
+#   3. Escaneie o QR que aparecer no terminal com WhatsApp → Aparelhos Conectados
+#   4. Após parear: defina WHATSAPP_ENABLED=true → Implantar novamente
+#   Após isso a URL https://seu-dominio.com/whatsapp/qr funciona para reconexões futuras.
+# ==============================================================================
+#
+# 📂 MAPA DE PERSISTÊNCIA:
+#   /opt/data         → volume hermes_data  (workspace, SOUL.md, support_rules.md, .hermes/)
+#   /opt/data/.hermes → HERMES_HOME (plugins, plataformas, sessão WhatsApp, banco SQLite)
+#   /root/.hermes     → volume hermes_root  (config.yaml e .env criados pelo setup.sh)
+# ==============================================================================
+
+services:
+  hermes:
+    #image: nousresearch/hermes-agent:v2026.5.16
+    image: nousresearch/hermes-agent:v2026.7.20
+    restart: unless-stopped
+    command: ["bash", "-c", "git config --global --add safe.directory /opt/data/.hermes/plugins/whatsapp-manager 2>/dev/null || true; python3 -c \"import os, yaml; from plugins.dashboard_auth.basic import hash_password; usr=os.environ.get('HERMES_DASHBOARD_BASIC_AUTH_USERNAME') or 'admin'; pwd=os.environ.get('HERMES_DASHBOARD_PASSWORD') or os.environ.get('API_SERVER_KEY') or 'admin123'; h=hash_password(pwd); paths=['/opt/data/.hermes/config.yaml', os.path.expanduser('~/.hermes/config.yaml')]; [os.makedirs(os.path.dirname(p), exist_ok=True) for p in paths]; exec('''for p in paths:\\n  try:\\n    with open(p,\\\"r\\\") as f: cfg=yaml.safe_load(f) or {}\\n  except Exception: cfg={}\\n  if not isinstance(cfg, dict): cfg={}\\n  dash=cfg.get(\\\"dashboard\\\")\\n  if not isinstance(dash, dict): dash={\\\"enabled\\\": True, \\\"host\\\": \\\"0.0.0.0\\\", \\\"port\\\": 9119}\\n  dash[\\\"enabled\\\"]=True; dash[\\\"host\\\"]=\\\"0.0.0.0\\\"; dash[\\\"port\\\"]=9119\\n  dash[\\\"basic_auth\\\"]={\\\"username\\\": usr, \\\"password_hash\\\": h}\\n  cfg[\\\"dashboard\\\"]=dash\\n  cfg[\\\"session_reset\\\"]={\\\"notify_user\\\": False}\\n  disp=cfg.get(\\\"display\\\") or {}\\n  if not isinstance(disp, dict): disp={}\\n  disp[\\\"show_system_header\\\"]=False\\n  disp[\\\"tool_progress\\\"]=\\\"off\\\"\\n  disp[\\\"platforms\\\"]={\\\"whatsapp\\\": {\\\"tool_progress\\\": \\\"off\\\"}}\\n  cfg[\\\"display\\\"]=disp\\n  with open(p,\\\"w\\\") as f: yaml.dump(cfg, f, default_flow_style=False)\\n  wa_p='/opt/data/.hermes/profiles/whatsapp/config.yaml'\\n  os.makedirs(os.path.dirname(wa_p), exist_ok=True)\\n  ts_list=['file_operations','code_execution','vision','image_generation','video_analysis','video_generation','web_search','browser','terminal','text_to_speech','skills','task_planning','todo','memory','context_engine','session_search','clarifying_questions','clarify','task_delegation','delegate_task','cronjob','cron_jobs','home_assistant','spotify','discord','discord_admin','yuanbao','computer_use','x_search','twitter_search']\\n  wa_cfg={'model': {'default': 'gemini-3.1-flash-lite', 'provider': 'gemini'}, 'agent': {'tool_use_enforcement': 'disabled'}, 'toolsets': [], 'disabled_toolsets': ts_list, 'tools': [], 'skills': {'enabled': False}, 'terminal': {'backend': 'disabled'}, 'display': {'show_system_header': False, 'tool_progress': 'off'}}\\n  with open(wa_p, \\\"w\\\") as f: yaml.dump(wa_cfg, f, default_flow_style=False)\\n''')\" 2>/dev/null; exec hermes gateway run"]
+
+    volumes:
+      # Volume principal: persiste /opt/data (workspace, plugins, sessão WhatsApp, banco SQLite)
+      - hermes_data:/opt/data
+      # Alternativa bind mount (dados independentes do serviço):
+      # - /srv/hermes/data:/opt/data
+
+      # Volume secundário: persiste /root/.hermes (config.yaml e .env criados pelo setup.sh)
+      - hermes_root:/root/.hermes
+      # Alternativa bind mount:
+      # - /srv/hermes/root-hermes:/root/.hermes
+
+    environment:
+      # Caminhos internos — não alterar
+      - HOME=/opt/data
+      - HERMES_HOME=/opt/data/.hermes
+      - PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - TZ=${TZ:-America/Sao_Paulo}
+      - HERMES_SERVER_DOMAIN=${HERMES_SERVER_DOMAIN:-}
+      - WORKSPACE=/opt/data/workspace
+      - HERMES_WORKSPACE=/opt/data/workspace
+
+      # Providers de IA — GOOGLE_API_KEY é indispensável (todos os modelos padrão usam Gemini)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - AISA_API_KEY=${AISA_API_KEY:-}
+
+      # Google OAuth (Calendar, Drive, Gmail)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+
+      # Telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
+
+      # WhatsApp — WHATSAPP_OWNER_NUMBER e WHATSAPP_OWNER_NAME são indispensáveis quando habilitado
+      - WHATSAPP_ENABLED=${WHATSAPP_ENABLED:-true}
+      - WHATSAPP_OWNER_NUMBER=${WHATSAPP_OWNER_NUMBER:-}
+      - WHATSAPP_OWNER_NAME=${WHATSAPP_OWNER_NAME:-}
+      - WHATSAPP_MODE=${WHATSAPP_MODE:-bot}
+      - WHATSAPP_ALLOWED_USERS=${WHATSAPP_ALLOWED_USERS:-*}
+      - WHATSAPP_CONNECTION_NAME=${WHATSAPP_CONNECTION_NAME:-EmpreendedorSerial}
+
+      # Debounce de mensagens (agrupa fragmentos de texto antes de processar)
+      - WHATSAPP_DEBOUNCE_INITIAL_MS=${WHATSAPP_DEBOUNCE_INITIAL_MS:-15000}
+      - WHATSAPP_DEBOUNCE_MIN_MS=${WHATSAPP_DEBOUNCE_MIN_MS:-2000}
+      - WHATSAPP_DEBOUNCE_DECAY=${WHATSAPP_DEBOUNCE_DECAY:-0.6}
+      - WHATSAPP_DEBOUNCE_SKIP_SELF_CHAT=${WHATSAPP_DEBOUNCE_SKIP_SELF_CHAT:-true}
+
+      # Modelos por função — todos usam Gemini por padrão (requer GOOGLE_API_KEY)
+      - WHATSAPP_OWNER_MODEL=${WHATSAPP_OWNER_MODEL:-gemini-3.1-flash-lite}
+      - WHATSAPP_OWNER_PROVIDER=${WHATSAPP_OWNER_PROVIDER:-gemini}
+      - WHATSAPP_CLIENT_MODEL=${WHATSAPP_CLIENT_MODEL:-gemini-3.1-flash-lite}
+      - WHATSAPP_CLIENT_PROVIDER=${WHATSAPP_CLIENT_PROVIDER:-gemini}
+      - WHATSAPP_CLIENT_MEDIA_MODEL=${WHATSAPP_CLIENT_MEDIA_MODEL:-gemini-3.1-flash-lite}
+      - WHATSAPP_CONTACT_CLASSIFIER_MODEL=${WHATSAPP_CONTACT_CLASSIFIER_MODEL:-gemini-3.1-flash-lite}
+
+      # Gateway
+      - GATEWAY_ALLOW_ALL_USERS=${GATEWAY_ALLOW_ALL_USERS:-false}
+
+      # API REST — API_SERVER_KEY é indispensável (sem default)
+      - API_SERVER_ENABLED=true
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_KEY=${API_SERVER_KEY}
+      - API_SERVER_CORS_ORIGINS=${API_SERVER_CORS_ORIGINS:-*}
+
+      # Dashboard (porta 9119)
+      - HERMES_DASHBOARD=1
+      - HERMES_DASHBOARD_HOST=0.0.0.0
+      - HERMES_DASHBOARD_PORT=9119
+      - HERMES_DASHBOARD_TUI=1
+
+      # Sincronização de contexto via GitHub
+      - HERMES_SETUP_GITHUB_USER=${HERMES_SETUP_GITHUB_USER:-empreendedorserial}
+      - CONFIG_REPO=${CONFIG_REPO:-hermes_agent_context_contatcs}
+      - CONFIG_GITHUB_TOKEN=${CONFIG_GITHUB_TOKEN:-}
+
+      # Limite de passos por resposta — evita loops e controla custo
+      - MAX_TURNS=${MAX_TURNS:-8}
+
+      # Timeouts
+      - HERMES_API_TIMEOUT=${HERMES_API_TIMEOUT:-1800}
+      - HERMES_API_CALL_STALE_TIMEOUT=${HERMES_API_CALL_STALE_TIMEOUT:-300}
+
+    # Portas expostas — configure os domínios na aba "Domains & Proxy" do Easypanel
+    ports:
+      - "8642"   # API REST
+      - "9119"   # Dashboard + WebSocket (/api/ws, /api/events, /api/pty)
+
+volumes:
+  hermes_data:
+    # /opt/data — workspace, plugins, sessão WhatsApp, banco SQLite, SOUL.md, support_rules.md
+    # Easypanel armazena em: /etc/easypanel/projects/<projeto>/hermes/volumes/hermes_data
+
+  hermes_root:
+    # /root/.hermes — config.yaml e .env criados pelo setup.sh
+    # Easypanel armazena em: /etc/easypanel/projects/<projeto>/hermes/volumes/hermes_root

@@ -1,0 +1,10 @@
+# 📂 Arquivos ignorados para segurança e organização
+.env
+*.log
+.hermes/
+node_modules/
+package-lock.json
+/tmp/
+__pycache__/
+*.pyc
+

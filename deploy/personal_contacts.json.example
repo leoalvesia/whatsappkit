@@ -1,0 +1,47 @@
+{
+  "5511999999999@s.whatsapp.net": {
+    "name": "Bruna",
+    "relationship": "AmigoProximo",
+    "manual_relationship": "AmigoProximo",
+    "notes": "Minha namorada. Sempre responda de forma muito carinhosa.",
+    "product": null,
+    "tone": "romântico, extremamente carinhoso, usando apelidos como 'amor', 'linda', informal",
+    "nickname": "Bru",
+    "pet_name": "amor",
+    "frequent_greeting": "Oi linda",
+    "summary": "Conversa carinhosa com planos para o fim de semana.",
+    "intent": "Marcar um encontro e saber como foi o dia.",
+    "frequency": "diária",
+    "guidelines": "Demonstre carinho, responda de forma afetuosa e use o histórico para mimetizar o nível de intimidade."
+  },
+  "5511888888888": {
+    "name": "Carlos",
+    "relationship": "Amigo",
+    "manual_relationship": null,
+    "notes": null,
+    "product": null,
+    "tone": "descontraído, camarada, usando gírias leves como 'cara', 'mano'",
+    "nickname": "Carlinhos",
+    "pet_name": null,
+    "frequent_greeting": "Eae mano",
+    "summary": "Assuntos gerais sobre trabalho, tecnologia e futebol.",
+    "intent": "Pedir ajuda com um código e marcar churrasco.",
+    "frequency": "semanal",
+    "guidelines": "Fale de forma direta, informal, brinque e responda com gírias comuns de amigos. Use abreviações comuns (vc, tb, pq, blz)."
+  },
+  "5511999000000": {
+    "name": "Marcos (Vendedor)",
+    "relationship": "Vendedor",
+    "manual_relationship": "Vendedor",
+    "notes": "Sempre agradeça e informe que não tenho interesse no momento.",
+    "product": "Plano de Saúde Empresarial",
+    "tone": "técnico e direto",
+    "nickname": "Marcos",
+    "pet_name": null,
+    "frequent_greeting": "Olá André",
+    "summary": "Contato tentando oferecer plano de saúde.",
+    "intent": "Oferecer cotação de plano de saúde.",
+    "frequency": "esporádica",
+    "guidelines": "Seja breve, agradeça a oferta e diga que no momento não tem interesse."
+  }
+}

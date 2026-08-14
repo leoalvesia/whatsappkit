@@ -1,0 +1,342 @@
+{
+  "__init__.py": {
+    "mtime": 1780700591.174301,
+    "ast_hash": "15d87a331425aa971f3ded71cf404705",
+    "semantic_hash": "15d87a331425aa971f3ded71cf404705"
+  },
+  "allowlist.js": {
+    "mtime": 1780682767.6143136,
+    "ast_hash": "46f22482b70b68ddc5af31babf855131",
+    "semantic_hash": "46f22482b70b68ddc5af31babf855131"
+  },
+  "bridge.js": {
+    "mtime": 1782252074.2077425,
+    "ast_hash": "edc7fcbc2c30630d65b744184a822ee6",
+    "semantic_hash": ""
+  },
+  "deploy/docs/bridge-artifacts/bridge.js": {
+    "mtime": 1781901495.0334063,
+    "ast_hash": "8e3602efd45ec628e8d0dc9cbdc8bc8a",
+    "semantic_hash": "8e3602efd45ec628e8d0dc9cbdc8bc8a"
+  },
+  "deploy/docs/bridge-artifacts/package.json": {
+    "mtime": 1781287392.7775357,
+    "ast_hash": "656cff424389e29c0b1f0073ae6de111",
+    "semantic_hash": "656cff424389e29c0b1f0073ae6de111"
+  },
+  "deploy/patch_whatsapp.py": {
+    "mtime": 1780626754.1352842,
+    "ast_hash": "6f4cc484aba954226837549fc9b16c28",
+    "semantic_hash": "6f4cc484aba954226837549fc9b16c28"
+  },
+  "deploy/scripts/authorize_google.py": {
+    "mtime": 1780638773.5035584,
+    "ast_hash": "ed728adfafe5d623350d538eb7d95c42",
+    "semantic_hash": "ed728adfafe5d623350d538eb7d95c42"
+  },
+  "deploy/scripts/google_api.py": {
+    "mtime": 1781899663.1386635,
+    "ast_hash": "23f726b412275f448f75a2cbb1180c9e",
+    "semantic_hash": "23f726b412275f448f75a2cbb1180c9e"
+  },
+  "deploy/scripts/support_agent.py": {
+    "mtime": 1781636279.7413828,
+    "ast_hash": "224077c15ec089086cd2824aa5502565",
+    "semantic_hash": "224077c15ec089086cd2824aa5502565"
+  },
+  "deploy/scripts/sync_contacts_from_db.py": {
+    "mtime": 1781141851.2870855,
+    "ast_hash": "fde5c785296e9ce945ffa9589c05b8db",
+    "semantic_hash": "fde5c785296e9ce945ffa9589c05b8db"
+  },
+  "deploy/setup.sh": {
+    "mtime": 1784683728.81765,
+    "ast_hash": "74421e0d5c481f048514682e5ae91dfb",
+    "semantic_hash": ""
+  },
+  "docs/bridge-artifacts/bridge.js": {
+    "mtime": 1781901495.0296345,
+    "ast_hash": "8e3602efd45ec628e8d0dc9cbdc8bc8a",
+    "semantic_hash": "8e3602efd45ec628e8d0dc9cbdc8bc8a"
+  },
+  "docs/bridge-artifacts/package.json": {
+    "mtime": 1781211190.3643486,
+    "ast_hash": "656cff424389e29c0b1f0073ae6de111",
+    "semantic_hash": "656cff424389e29c0b1f0073ae6de111"
+  },
+  "google_api.py": {
+    "mtime": 1780639324.317351,
+    "ast_hash": "732790100686744e70cbfefb9d0248cf",
+    "semantic_hash": "732790100686744e70cbfefb9d0248cf"
+  },
+  "package.json": {
+    "mtime": 1780700619.1615,
+    "ast_hash": "656cff424389e29c0b1f0073ae6de111",
+    "semantic_hash": "656cff424389e29c0b1f0073ae6de111"
+  },
+  "tests/bridge.test.js": {
+    "mtime": 1782157217.310366,
+    "ast_hash": "346dd1b170f194b1a3d188f124550e15",
+    "semantic_hash": ""
+  },
+  "tests/plugin_test.py": {
+    "mtime": 1782502902.879939,
+    "ast_hash": "153430d4f995118c55bf76f1bea31c0e",
+    "semantic_hash": ""
+  },
+  "tests/test_gemini_classification.py": {
+    "mtime": 1781297637.8220718,
+    "ast_hash": "f53a1ede3f317c7f646c8b2219da5c45",
+    "semantic_hash": "f53a1ede3f317c7f646c8b2219da5c45"
+  },
+  "tests/test_gemini_key.py": {
+    "mtime": 1781297628.9700422,
+    "ast_hash": "39abdf2c755ccbb7ac29e7fe4440cc37",
+    "semantic_hash": "39abdf2c755ccbb7ac29e7fe4440cc37"
+  },
+  "whatsapp_manager.py": {
+    "mtime": 1782502766.7231665,
+    "ast_hash": "2446ba5f97d078c6c5a8ec2f0450e970",
+    "semantic_hash": ""
+  },
+  ".agents/rules/graphify.md": {
+    "mtime": 1781558045.4389179,
+    "ast_hash": "f1e53ecc9194573d3c28fc116c743a2e",
+    "semantic_hash": "f1e53ecc9194573d3c28fc116c743a2e"
+  },
+  ".agents/workflows/graphify.md": {
+    "mtime": 1781558045.43908,
+    "ast_hash": "0bc020d491fca99550c1ea3de0a5f862",
+    "semantic_hash": "0bc020d491fca99550c1ea3de0a5f862"
+  },
+  ".gemini/skills/deploy-plugin/SKILL.md": {
+    "mtime": 1780674271.1126235,
+    "ast_hash": "362c15d8454243aa3f9c1e160bb032f2",
+    "semantic_hash": "362c15d8454243aa3f9c1e160bb032f2"
+  },
+  "CHANGELOG_DEBUG.md": {
+    "mtime": 1781203399.9755282,
+    "ast_hash": "850364dbc332f1be55c3a6e0f3c276c0",
+    "semantic_hash": "850364dbc332f1be55c3a6e0f3c276c0"
+  },
+  "DESIGN.md": {
+    "mtime": 1782153374.3668172,
+    "ast_hash": "f792f2e7694c99f2f56e60d86c70cc99",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1784074634.8463368,
+    "ast_hash": "48910533dab11ac82b3b246a32f26f94",
+    "semantic_hash": ""
+  },
+  "deploy/PASSO_A_PASSO.md": {
+    "mtime": 1781148764.6137655,
+    "ast_hash": "e1967801193311824542cd141619cd85",
+    "semantic_hash": "e1967801193311824542cd141619cd85"
+  },
+  "deploy/README.md": {
+    "mtime": 1784074642.9796054,
+    "ast_hash": "ba4b07b3e758527f81ae4e022d3a9303",
+    "semantic_hash": ""
+  },
+  "deploy/SOUL.md": {
+    "mtime": 1781636279.7397666,
+    "ast_hash": "97292c61e980ea503fca29eed90b60c3",
+    "semantic_hash": "97292c61e980ea503fca29eed90b60c3"
+  },
+  "deploy/SOUL_EMAIL.md": {
+    "mtime": 1780626754.1329389,
+    "ast_hash": "b6f568b6121350f32d93c523e91a14ac",
+    "semantic_hash": "b6f568b6121350f32d93c523e91a14ac"
+  },
+  "deploy/SOUL_WHATSAPP.md": {
+    "mtime": 1781636279.7406595,
+    "ast_hash": "a999a8732dafae494a4e8e32a4cc0ae5",
+    "semantic_hash": "a999a8732dafae494a4e8e32a4cc0ae5"
+  },
+  "deploy/docker-compose.easypanel.yml": {
+    "mtime": 1784683753.5817258,
+    "ast_hash": "1bd2a5873feb85d6c1d5983041be7c05",
+    "semantic_hash": ""
+  },
+  "deploy/docker-compose.yml": {
+    "mtime": 1784683735.0367935,
+    "ast_hash": "81779b1541315afb5c731d46ba10b2d8",
+    "semantic_hash": ""
+  },
+  "deploy/skills/hermes-architecture/SKILL.md": {
+    "mtime": 1781218192.5339172,
+    "ast_hash": "9895ed6ef3878a4eea8a37468bcbaa39",
+    "semantic_hash": "9895ed6ef3878a4eea8a37468bcbaa39"
+  },
+  "deploy/skills/whatsapp-bot-env-vars/SKILL.md": {
+    "mtime": 1781218207.0437462,
+    "ast_hash": "e64ad6c895c7cd3bd7f841fc0a054420",
+    "semantic_hash": "e64ad6c895c7cd3bd7f841fc0a054420"
+  },
+  "deploy/skills/whatsapp-logs-diagnostics/SKILL.md": {
+    "mtime": 1781030146.4741719,
+    "ast_hash": "d9a32093b2208ca6b97e0fb10eecf82f",
+    "semantic_hash": "d9a32093b2208ca6b97e0fb10eecf82f"
+  },
+  "deploy/support_rules.md": {
+    "mtime": 1781636279.7419226,
+    "ast_hash": "48c773ca3becccc11703f1c5e4ebbca7",
+    "semantic_hash": "48c773ca3becccc11703f1c5e4ebbca7"
+  },
+  "plugin.yaml": {
+    "mtime": 1781030217.1490884,
+    "ast_hash": "4e5e4a834a12f0c2bb9f293ce096239d",
+    "semantic_hash": "4e5e4a834a12f0c2bb9f293ce096239d"
+  },
+  "skills/google-oauth/SKILL.md": {
+    "mtime": 1780640114.2757053,
+    "ast_hash": "cb5b032d1383ce417e2b05bb519ff553",
+    "semantic_hash": "cb5b032d1383ce417e2b05bb519ff553"
+  },
+  "skills/research-sources/SKILL.md": {
+    "mtime": 1780641142.2417815,
+    "ast_hash": "a7b1c285d636945063eddcd99bb36893",
+    "semantic_hash": "a7b1c285d636945063eddcd99bb36893"
+  },
+  "skills/whatsapp-logs-diagnostics/SKILL.md": {
+    "mtime": 1781030137.818784,
+    "ast_hash": "d9a32093b2208ca6b97e0fb10eecf82f",
+    "semantic_hash": "d9a32093b2208ca6b97e0fb10eecf82f"
+  },
+  ".gemini/settings.json": {
+    "mtime": 1781558312.1568646,
+    "ast_hash": "f080aabf772e803c9e24b9ad0acbf2b6",
+    "semantic_hash": "f080aabf772e803c9e24b9ad0acbf2b6"
+  },
+  "GEMINI.md": {
+    "mtime": 1781558312.1566935,
+    "ast_hash": "82efb97a359f5c7290bf2513d14686be",
+    "semantic_hash": "82efb97a359f5c7290bf2513d14686be"
+  },
+  ".serena/project.local.yml": {
+    "mtime": 1781819328.7899978,
+    "ast_hash": "f136e7d47205d9a758913615074760e5",
+    "semantic_hash": "f136e7d47205d9a758913615074760e5"
+  },
+  ".serena/project.yml": {
+    "mtime": 1783115012.4269047,
+    "ast_hash": "9e3f2ad4c7ab309863072cfc521fb5c4",
+    "semantic_hash": ""
+  },
+  "PLANO_IMPLEMENTACAO.md": {
+    "mtime": 1782154326.0204718,
+    "ast_hash": "3b334a4c63529ac238838e0eff2e6f6f",
+    "semantic_hash": ""
+  },
+  "REFACTORING_OPPORTUNITIES.md": {
+    "mtime": 1781821593.4884286,
+    "ast_hash": "36b82e916686a8a834ae7880e80ca6a5",
+    "semantic_hash": "36b82e916686a8a834ae7880e80ca6a5"
+  },
+  "deploy/scripts/capture_logs.sh": {
+    "mtime": 1782292946.702825,
+    "ast_hash": "c469c01290edadba3d8001c2a326b839",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/diagnose_bridge_dedup.py": {
+    "mtime": 1782292934.8345218,
+    "ast_hash": "9736d904cc05cefd71c1b45aab1afaff",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/diagnose_duplicates.sh": {
+    "mtime": 1782291702.7584586,
+    "ast_hash": "38d66d6f2268c31068f7605ce1a80bfe",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/preview_soul.py": {
+    "mtime": 1782200791.782932,
+    "ast_hash": "f6fb4bc25b3d06754b28a4712365d3e5",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/test_audio_transcription.py": {
+    "mtime": 1782266785.3208232,
+    "ast_hash": "d3f01d7495bcfe4375222426ee729ddf",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/test_contact_search.py": {
+    "mtime": 1782275838.5847387,
+    "ast_hash": "cbce62b3edfd3636ee06b24d022c56a9",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/test_empty_key_bug.py": {
+    "mtime": 1782278772.7319984,
+    "ast_hash": "94b3f49c75a81a3ea60105ffeffc50fb",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/test_nl_update.py": {
+    "mtime": 1782269546.1011496,
+    "ast_hash": "9db4155497b5ddf86941345480b454fb",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/test_plugin_functions.py": {
+    "mtime": 1782277590.9305072,
+    "ast_hash": "539a8333e69188c61f926f738b3ebe83",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/test_post_llm_and_security.py": {
+    "mtime": 1782288275.9305978,
+    "ast_hash": "d75786e5393b9ebb6e80854681d9542e",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/test_prompt_routing.py": {
+    "mtime": 1782281867.0870504,
+    "ast_hash": "667436fc5513618fe99ac8d054e63bc8",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/test_style_learning.py": {
+    "mtime": 1782192137.4803689,
+    "ast_hash": "c4fa794eacf315007d0788f713df8778",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/test_utils_and_filters.py": {
+    "mtime": 1782288380.8883145,
+    "ast_hash": "5221ee3dae5f630d0a34eefdf4be3e9d",
+    "semantic_hash": ""
+  },
+  "deploy/scripts/watch_plugin.sh": {
+    "mtime": 1782291709.3336418,
+    "ast_hash": "68a730b03e664768728b1c8f2ebb4fc8",
+    "semantic_hash": ""
+  },
+  "validate_dedup.py": {
+    "mtime": 1782363530.381655,
+    "ast_hash": "d1c9c0d92f1c7c9402883410dec24569",
+    "semantic_hash": ""
+  },
+  "MELHORIAS_FUTURAS.md": {
+    "mtime": 1781905229.1545122,
+    "ast_hash": "7da75ad1c10d9b32e8abea03dcb97bee",
+    "semantic_hash": ""
+  },
+  "docs/tutorial-easypanel.md": {
+    "mtime": 1782619999.3746455,
+    "ast_hash": "2cf903cbe74445fe7996ab894d3d26d1",
+    "semantic_hash": ""
+  },
+  "deploy/skills/aisa/crypto-projection-dashboard.md": {
+    "mtime": 1784077060.2962914,
+    "ast_hash": "bededddcd842ab39921047ce0b22087f",
+    "semantic_hash": ""
+  },
+  "deploy/skills/aisa/pizzarias-sem-sit.md": {
+    "mtime": 1784077060.3082402,
+    "ast_hash": "ec75ed261ea4b940b79a5c2b68d6a57c",
+    "semantic_hash": ""
+  },
+  "deploy/skills/aisa/youtube-claude-code-lead-discovery.md": {
+    "mtime": 1784077060.308225,
+    "ast_hash": "730a189f8b822d05d0da99e5ee0dfec0",
+    "semantic_hash": ""
+  },
+  "deploy/docker-compose-bk.yml": {
+    "mtime": 1784683795.7666516,
+    "ast_hash": "11c32ad26a7cfdad375e1e43ba42755b",
+    "semantic_hash": ""
+  }
+}

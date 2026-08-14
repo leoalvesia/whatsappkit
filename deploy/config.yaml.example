@@ -1,0 +1,69 @@
+# ⚙️ Hermes Agent - Configuração Recomendada (config.yaml)
+# Copie este conteúdo para o seu arquivo ~/.hermes/config.yaml ou /opt/data/.hermes/config.yaml
+
+model:
+  # O modelo padrão que o Hermes vai usar para raciocinar e responder
+  # Usando o Gemini 3.1 Flash-Lite (Super rápido, eficiente e de excelente custo-benefício!)
+  default: gemini-3.1-flash-lite
+  provider: gemini
+  context_length: 8000
+
+agent:
+  # Número máximo de interações (voltas) que o agente pode dar em uma única tarefa antes de parar
+  max_turns: 8
+  tool_use_enforcement: auto
+  reasoning_effort: medium
+
+terminal:
+  # Backend onde os comandos serão executados. No Portainer, 'local' roda dentro do container do Hermes.
+  backend: local
+  cwd: .
+  timeout: 180
+
+whatsapp:
+  # Desativa respostas automáticas em grupos para evitar spam e consumo de créditos desnecessários!
+  group_policy: disabled
+
+# --- INTEGRAÇÃO DE E-MAIL (Opcional - Suporte via Gmail/Outlook) ---
+# Se você deseja que o Hermes também leia e responda e-mails de suporte de forma automática:
+email:
+  enabled: false                  # Mude para true se for ativar o canal de e-mail
+  imap_server: imap.gmail.com     # Servidor IMAP do Gmail
+  imap_port: 993                  # Porta padrão SSL do IMAP
+  smtp_server: smtp.gmail.com     # Servidor SMTP do Gmail
+  smtp_port: 465                  # Porta padrão SSL do SMTP
+  use_ssl: true                   # Sempre usar conexão criptografada SSL/TLS
+  # Nota: O nome de usuário e senha de app devem ser colocados no seu arquivo .env!
+
+approvals:
+  # Modo de segurança para comandos do terminal:
+  # - manual: Sempre pede autorização antes de rodar comandos de terminal (Recomendado/Seguro)
+  # - smart: Usa IA auxiliar para auto-aprovar comandos de baixo risco e só perguntar os perigosos
+  # - off: Roda qualquer comando de terminal livremente (Cuidado!)
+  mode: manual
+  timeout: 60
+
+memory:
+  # Habilita a memória persistente para que o Hermes lembre das preferências do dono nas próximas conversas
+  memory_enabled: true
+  user_profile_enabled: true
+
+display:
+  # Desativa mensagens de progresso de ferramentas (ex: "📖 read_file: ...") no WhatsApp/Chats
+  tool_progress: 'off'
+  platforms:
+    whatsapp:
+      tool_progress: 'off'
+  # Desativa os avisos automáticos de estado ocupado (ex: "⚡ Interrupting... I'll respond shortly") no chat
+  busy_ack_enabled: false
+  # Define o comportamento ao receber novas mensagens enquanto trabalha (interrupt | queue | steer)
+  busy_input_mode: queue
+
+auxiliary:
+  # IA auxiliar de baixo custo para tarefas de compressão de contexto e buscas
+  compression:
+    provider: gemini
+    model: gemini-3.1-flash-lite
+  session_search:
+    provider: gemini
+    model: gemini-3.1-flash-lite

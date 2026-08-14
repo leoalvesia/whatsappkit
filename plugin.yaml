@@ -1,0 +1,4 @@
+name: whatsapp-manager
+version: "1.1"
+description: |
+  Transforma o WhatsApp em um assistente pessoal para o dono e um atendente automático para clientes, cada um com sua própria persona e modelo de IA. Classifica contatos automaticamente, silencia o bot quando o dono responde manualmente, executa comandos de controle (pausar/retomar, sincronizar) e mantém contatos e configurações sincronizados com backup em nuvem.

@@ -1,0 +1,313 @@
+# ==============================================================================
+# 📋 STACK: HERMES AGENT  (Swarm / Portainer)
+# ==============================================================================
+# Dois containers:
+#   hermes          — agente principal (LLM gateway + API REST + Dashboard)
+#   whatsapp-bridge — processo Node.js que mantém a sessão WhatsApp via Baileys
+#
+# O container hermes sobe um micro-proxy TCP na porta 127.0.0.1:3000 que
+# redireciona tráfego para whatsapp-bridge:3000, permitindo que o plugin
+# interno use WHATSAPP_BRIDGE_URL=http://whatsapp-bridge:3000 via rede Docker.
+#
+# Volume compartilhado: hermes_agent_hermes_data_v5 → /opt/data
+#   /opt/data/.hermes/plugins/  → plugins carregados pelo gateway
+#   /opt/data/.hermes/platforms/whatsapp/bridge/bridge.js  → bridge Node.js
+#   /opt/data/.hermes/platforms/whatsapp/session/          → sessão WhatsApp
+#   /opt/data/workspace/        → repositórios clonados (ex: hermes-whatsapp-mixed)
+# ==============================================================================
+#
+# ██████████████████████████████████████████████████████████████████████████████
+# ▶ VARIÁVEIS INDISPENSÁVEIS — sem estas a stack não sobe ou não funciona
+# ██████████████████████████████████████████████████████████████████████████████
+#
+# 🌐 ROTEAMENTO TRAEFIK (obrigatórias para exposição HTTPS)
+#   HERMES_API_HOST        Domínio da API REST  (ex: hermes-api.seu-dominio.com)
+#   HERMES_DASH_HOST       Domínio do Dashboard (ex: hermes.seu-dominio.com)
+#                          → usado também pela bridge para expor /whatsapp (QR)
+#
+# 🔑 AUTENTICAÇÃO DA API (obrigatória — sem default)
+#   API_SERVER_KEY         Chave secreta para autenticar chamadas à API do Hermes
+#                          Gerar: openssl rand -hex 32
+#
+# 🔒 BASIC AUTH NO DASHBOARD (obrigatória — sem default, protege contra acesso público)
+#   HERMES_DASH_AUTH_USERS  Usuário:hash para proteger o Dashboard via Traefik
+#                          Gerar: echo $(htpasswd -nb usuario senha) | sed -e s/\$/\$\$/g
+#                          → o Dashboard expõe terminal, logs e conversas — NUNCA deixe sem isso
+#
+# 🤖 PROVIDER DE IA (obrigatória na prática)
+#   GOOGLE_API_KEY         Chave da Google AI Studio / Vertex AI
+#                          → todos os modelos padrão usam gemini-3.1-flash-lite
+#                            via provider "gemini"; sem esta chave o bot não responde
+#
+# 🟢 WHATSAPP — obrigatórias para o bot funcionar
+#   WHATSAPP_ENABLED       Deve ser definida explicitamente como "true" (padrão do compose)
+#                          → defina "false" apenas antes de parear pela primeira vez;
+#                            volte para "true" após parear e reiniciar
+#   WHATSAPP_OWNER_NUMBER  Número do dono no formato internacional sem + (ex: 5511999999999)
+#   WHATSAPP_OWNER_NAME    Nome do dono usado nos prompts e respostas (ex: André)
+#
+# 📦 SINCRONIZAÇÃO DE CONTEXTO VIA GITHUB (obrigatória na prática)
+#   CONFIG_GITHUB_TOKEN    Token GitHub (PAT) com acesso de leitura ao CONFIG_REPO
+#                          → sem ele, personal_contacts.json e SOUL_WHATSAPP.md
+#                            não são sincronizados; o bot sobe mas opera sem contexto
+#
+# ██████████████████████████████████████████████████████████████████████████████
+# ▶ VARIÁVEIS OPCIONAIS
+# ██████████████████████████████████████████████████████████████████████████████
+#
+# 🤖 PROVIDERS ALTERNATIVOS DE IA
+#   OPENAI_API_KEY         Chave da OpenAI (GPT-4, etc.)
+#   ANTHROPIC_API_KEY      Chave da Anthropic (Claude)
+#   OPENROUTER_API_KEY     Chave da OpenRouter (acesso multi-provider)
+#
+# 🤖 MODELOS POR FUNÇÃO (padrão: gemini-3.1-flash-lite / provider: gemini)
+#   WHATSAPP_OWNER_MODEL          Modelo usado para responder ao dono
+#   WHATSAPP_OWNER_PROVIDER       Provider do modelo do dono
+#   WHATSAPP_CLIENT_MODEL         Modelo usado para responder a clientes/desconhecidos
+#   WHATSAPP_CLIENT_PROVIDER      Provider do modelo de clientes
+#   WHATSAPP_CLIENT_MEDIA_MODEL   Modelo para transcrição/análise de mídia
+#   WHATSAPP_CONTACT_CLASSIFIER_MODEL  Modelo para classificar novos contatos
+#
+# 💬 TELEGRAM
+#   TELEGRAM_BOT_TOKEN     Token do bot criado no BotFather
+#   TELEGRAM_ALLOWED_USERS IDs Telegram autorizados (ex: "12345678,98765432")
+#   GATEWAY_ALLOW_ALL_USERS Permitir qualquer usuário interagir (padrão: false)
+#
+# 🟢 WHATSAPP — configurações adicionais
+#   WHATSAPP_ENABLED       Habilitar WhatsApp (padrão: true — deixe false até parear)
+#   WHATSAPP_MODE          Modo de operação (padrão: bot)
+#   WHATSAPP_ALLOWED_USERS Números autorizados a interagir (padrão: * = todos)
+#   WHATSAPP_CONNECTION_NAME Nome da conexão exibido no Dashboard (padrão: EmpreendedorSerial)
+#   WHATSAPP_QR_PATH       Path do endpoint de QR/status na bridge (padrão: /whatsapp)
+#
+# 🔑 GOOGLE CLOUD / OAUTH
+#   GOOGLE_CLIENT_ID       Client ID para autenticação OAuth (Google Calendar, Drive, etc.)
+#   GOOGLE_CLIENT_SECRET   Client Secret correspondente
+#
+# 📦 SINCRONIZAÇÃO DE CONTEXTO VIA GITHUB
+#   HERMES_SETUP_GITHUB_USER  Usuário GitHub dono do repositório de configuração
+#   CONFIG_REPO               Nome do repositório com contextos/contatos (padrão: hermes_agent_context_contatcs)
+#
+# ⏱️ TIMEOUTS E OUTROS
+#   TZ                         Fuso horário (padrão: America/Sao_Paulo)
+#   MAX_TURNS                  Máximo de iterações por resposta — controla custo (padrão: 8)
+#   HERMES_API_TIMEOUT         Timeout total da API em segundos (padrão: 1800)
+#   HERMES_API_CALL_STALE_TIMEOUT  Timeout de chamada inativa (padrão: 300)
+#   API_SERVER_CORS_ORIGINS    Origens CORS permitidas (padrão: *)
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  hermes:
+    image: nousresearch/hermes-agent:v2026.5.16
+    restart: unless-stopped
+    # Micro-proxy TCP: escuta em 127.0.0.1:3000 e redireciona para whatsapp-bridge:3000
+    # Isso expõe a bridge internamente como se fosse localhost, compatível com o plugin.
+    # Em seguida executa o gateway principal do Hermes.
+    command: ["bash", "-c", "node -e \"process.on('uncaughtException', () => {}); const net = require('net'); net.createServer(s => { const c = net.connect(3000, 'whatsapp-bridge'); s.pipe(c).pipe(s); c.on('error', () => s.destroy()); s.on('error', () => c.destroy()); }).listen(3000, '127.0.0.1');\" & exec hermes gateway run"]
+
+    volumes:
+      - hermes_agent_hermes_data_v5:/opt/data
+
+    environment:
+      # Caminhos internos — não alterar
+      - HOME=/opt/data
+      - HERMES_HOME=/opt/data/.hermes
+      - PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - WORKSPACE=/opt/data/workspace
+      - HERMES_WORKSPACE=/opt/data/workspace
+      - TZ=${TZ:-America/Sao_Paulo}
+      - HERMES_SERVER_DOMAIN=${HERMES_SERVER_DOMAIN:-}
+
+      # Providers de IA — GOOGLE_API_KEY é indispensável (todos os modelos padrão usam Gemini)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - AISA_API_KEY=${AISA_API_KEY:-}
+
+      # Google OAuth (Calendar, Drive, Gmail)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+
+      # Telegram
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
+
+      # WhatsApp — WHATSAPP_OWNER_NUMBER e WHATSAPP_OWNER_NAME são indispensáveis quando habilitado
+      - WHATSAPP_ENABLED=${WHATSAPP_ENABLED:-true}
+      - WHATSAPP_OWNER_NUMBER=${WHATSAPP_OWNER_NUMBER:-}
+      - WHATSAPP_OWNER_NAME=${WHATSAPP_OWNER_NAME:-}
+      - WHATSAPP_MODE=${WHATSAPP_MODE:-bot}
+      - WHATSAPP_ALLOWED_USERS=${WHATSAPP_ALLOWED_USERS:-*}
+      - WHATSAPP_BRIDGE_URL=http://whatsapp-bridge:3000
+      - WHATSAPP_CONNECTION_NAME=${WHATSAPP_CONNECTION_NAME:-EmpreendedorSerial}
+
+      # Modelos por função — todos usam Gemini por padrão (requer GOOGLE_API_KEY)
+      - WHATSAPP_OWNER_MODEL=${WHATSAPP_OWNER_MODEL:-gemini-3.1-flash-lite}
+      - WHATSAPP_OWNER_PROVIDER=${WHATSAPP_OWNER_PROVIDER:-gemini}
+      - WHATSAPP_CLIENT_MODEL=${WHATSAPP_CLIENT_MODEL:-gemini-3.1-flash-lite}
+      - WHATSAPP_CLIENT_PROVIDER=${WHATSAPP_CLIENT_PROVIDER:-gemini}
+      - WHATSAPP_CLIENT_MEDIA_MODEL=${WHATSAPP_CLIENT_MEDIA_MODEL:-gemini-3.1-flash-lite}
+      - WHATSAPP_CONTACT_CLASSIFIER_MODEL=${WHATSAPP_CONTACT_CLASSIFIER_MODEL:-gemini-3.1-flash-lite}
+
+      # Gateway
+      - GATEWAY_ALLOW_ALL_USERS=${GATEWAY_ALLOW_ALL_USERS:-false}
+
+      # API REST — API_SERVER_KEY é indispensável (sem default)
+      - API_SERVER_ENABLED=true
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_KEY=${API_SERVER_KEY}
+      - API_SERVER_CORS_ORIGINS=${API_SERVER_CORS_ORIGINS:-*}
+
+      # Dashboard (porta 9119)
+      - HERMES_DASHBOARD=1
+      - HERMES_DASHBOARD_HOST=0.0.0.0
+      - HERMES_DASHBOARD_PORT=9119
+      - HERMES_DASHBOARD_TUI=1
+
+      # Sincronização de contexto via GitHub
+      - HERMES_SETUP_GITHUB_USER=${HERMES_SETUP_GITHUB_USER:-empreendedorserial}
+      - CONFIG_REPO=${CONFIG_REPO:-hermes_agent_context_contatcs}
+      - CONFIG_GITHUB_TOKEN=${CONFIG_GITHUB_TOKEN:-}
+
+      # Limite de passos por resposta — evita loops e controla custo
+      - MAX_TURNS=${MAX_TURNS:-8}
+
+      # Path do endpoint QR/status da bridge, exposto pelo Traefik
+      - WHATSAPP_QR_PATH=${WHATSAPP_QR_PATH:-/whatsapp}
+
+      # Timeouts
+      - HERMES_API_TIMEOUT=${HERMES_API_TIMEOUT:-1800}
+      - HERMES_API_CALL_STALE_TIMEOUT=${HERMES_API_CALL_STALE_TIMEOUT:-300}
+
+    networks:
+      - traefik_public
+
+    deploy:
+      replicas: 1
+
+      update_config:
+        order: stop-first
+        parallelism: 1
+        delay: 15s
+
+      rollback_config:
+        order: stop-first
+        parallelism: 1
+
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 0
+
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_public"
+
+        # Basic Auth no Dashboard — protege contra acesso público indevido
+        # Gerar HERMES_DASH_AUTH_USERS com: echo $(htpasswd -nb usuario senha) | sed -e s/\\$/\\$\\$/g
+        - "traefik.http.middlewares.hermes-dash-auth.basicauth.users=${HERMES_DASH_AUTH_USERS}"
+
+        # API REST → porta 8642
+        - "traefik.http.routers.hermes-api.rule=Host(`${HERMES_API_HOST}`)"
+        - "traefik.http.routers.hermes-api.entrypoints=websecure"
+        - "traefik.http.routers.hermes-api.tls=true"
+        - "traefik.http.routers.hermes-api.tls.certresolver=le"
+        - "traefik.http.routers.hermes-api.service=hermes-api"
+        - "traefik.http.services.hermes-api.loadbalancer.server.port=8642"
+
+        # Dashboard → porta 9119 (protegido por Basic Auth)
+        - "traefik.http.routers.hermes-dash.rule=Host(`${HERMES_DASH_HOST}`)"
+        - "traefik.http.routers.hermes-dash.entrypoints=websecure"
+        - "traefik.http.routers.hermes-dash.tls=true"
+        - "traefik.http.routers.hermes-dash.tls.certresolver=le"
+        - "traefik.http.routers.hermes-dash.service=hermes-dash"
+        - "traefik.http.routers.hermes-dash.middlewares=hermes-dash-auth"
+        - "traefik.http.services.hermes-dash.loadbalancer.server.port=9119"
+        - "traefik.http.services.hermes-dash.loadbalancer.responseforwarding.flushinterval=100ms"
+
+        # WebSocket /api/ws (Dashboard TUI) — protegido por Basic Auth
+        - "traefik.http.routers.hermes-ws.rule=Host(`${HERMES_DASH_HOST}`) && PathPrefix(`/api/ws`)"
+        - "traefik.http.routers.hermes-ws.entrypoints=websecure"
+        - "traefik.http.routers.hermes-ws.tls=true"
+        - "traefik.http.routers.hermes-ws.tls.certresolver=le"
+        - "traefik.http.routers.hermes-ws.service=hermes-dash"
+        - "traefik.http.routers.hermes-ws.middlewares=hermes-dash-auth"
+        - "traefik.http.routers.hermes-ws.priority=300"
+
+        # WebSocket /api/events (streaming de eventos) — protegido por Basic Auth
+        - "traefik.http.routers.hermes-events.rule=Host(`${HERMES_DASH_HOST}`) && PathPrefix(`/api/events`)"
+        - "traefik.http.routers.hermes-events.entrypoints=websecure"
+        - "traefik.http.routers.hermes-events.tls=true"
+        - "traefik.http.routers.hermes-events.tls.certresolver=le"
+        - "traefik.http.routers.hermes-events.service=hermes-dash"
+        - "traefik.http.routers.hermes-events.middlewares=hermes-dash-auth"
+        - "traefik.http.routers.hermes-events.priority=300"
+
+        # WebSocket /api/pty (terminal interativo no Dashboard) — protegido por Basic Auth
+        - "traefik.http.routers.hermes-pty.rule=Host(`${HERMES_DASH_HOST}`) && PathPrefix(`/api/pty`)"
+        - "traefik.http.routers.hermes-pty.entrypoints=websecure"
+        - "traefik.http.routers.hermes-pty.tls=true"
+        - "traefik.http.routers.hermes-pty.tls.certresolver=le"
+        - "traefik.http.routers.hermes-pty.service=hermes-dash"
+        - "traefik.http.routers.hermes-pty.middlewares=hermes-dash-auth"
+        - "traefik.http.routers.hermes-pty.priority=300"
+
+  whatsapp-bridge:
+    image: nousresearch/hermes-agent:v2026.5.16
+    restart: unless-stopped
+    # Aguarda o bridge.js ser copiado para o volume antes de iniciar.
+    # Se o Node.js encerrar com erro, limpa a sessão corrompida e sai (Docker reinicia o container).
+    command: ["bash", "-c", "while [ ! -f /opt/data/.hermes/platforms/whatsapp/bridge/bridge.js ]; do sleep 1; done && node /opt/data/.hermes/platforms/whatsapp/bridge/bridge.js --port 3000 --session /opt/data/.hermes/platforms/whatsapp/session --mode bot || (echo 'Cleaning session...' && rm -rf /opt/data/.hermes/platforms/whatsapp/session/* && exit 1)"]
+
+    volumes:
+      - hermes_agent_hermes_data_v5:/opt/data
+
+    environment:
+      - HOME=/opt/data
+      - HERMES_HOME=/opt/data/.hermes
+      - NODE_PATH=/opt/hermes/scripts/whatsapp-bridge/node_modules
+      - TZ=${TZ:-America/Sao_Paulo}
+      # HERMES_DASH_HOST expõe o endpoint /whatsapp (QR + status) via Traefik
+      - HERMES_DASH_HOST=${HERMES_DASH_HOST}
+      - WHATSAPP_BRIDGE_HOST=${HERMES_DASH_HOST}
+      - WHATSAPP_MODE=${WHATSAPP_MODE:-bot}
+      - WHATSAPP_ALLOWED_USERS=${WHATSAPP_ALLOWED_USERS:-*}
+      # WHATSAPP_OWNER_NUMBER é indispensável — identifica mensagens do próprio dono
+      - WHATSAPP_OWNER_NUMBER=${WHATSAPP_OWNER_NUMBER}
+      - WHATSAPP_CONNECTION_NAME=${WHATSAPP_CONNECTION_NAME:-EmpreendedorSerial}
+      # WHATSAPP_CLIENT_MEDIA_MODEL e GOOGLE_API_KEY: usados pela bridge para transcrever mídia recebida
+      - WHATSAPP_CLIENT_MEDIA_MODEL=${WHATSAPP_CLIENT_MEDIA_MODEL:-gemini-3.1-flash-lite}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+
+    networks:
+      - traefik_public
+
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+        max_attempts: 0
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_public"
+        # Endpoint QR/status exposto no mesmo domínio do Dashboard, com prioridade maior
+        - "traefik.http.routers.whatsapp-bridge.rule=Host(`${HERMES_DASH_HOST}`) && PathPrefix(`${WHATSAPP_QR_PATH:-/whatsapp}`)"
+        - "traefik.http.routers.whatsapp-bridge.entrypoints=websecure"
+        - "traefik.http.routers.whatsapp-bridge.tls=true"
+        - "traefik.http.routers.whatsapp-bridge.tls.certresolver=le"
+        - "traefik.http.routers.whatsapp-bridge.service=whatsapp-bridge"
+        - "traefik.http.routers.whatsapp-bridge.priority=350"
+        - "traefik.http.services.whatsapp-bridge.loadbalancer.server.port=3000"
+
+volumes:
+  hermes_agent_hermes_data_v5:
+    external: true
+
+networks:
+  traefik_public:
+    external: true
