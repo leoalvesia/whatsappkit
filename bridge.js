@@ -189,6 +189,9 @@ const PAIR_ONLY = args.includes('--pair-only');
 const WHATSAPP_MODE = getArg('mode', process.env.WHATSAPP_MODE || 'self-chat'); // "bot" or "self-chat"
 const ALLOWED_USERS = parseAllowedUsers(process.env.WHATSAPP_ALLOWED_USERS || '');
 const WHATSAPP_OWNER_NUMBER = (process.env.WHATSAPP_OWNER_NUMBER || '').replace(/\D/g, '');
+// Nome do dono usado ao gravar as mensagens manuais dele no SQLite. Vem do ambiente
+// para o mesmo bridge servir qualquer cliente; 'dono' e o fallback quando nao definido.
+const WHATSAPP_OWNER_NAME = (process.env.WHATSAPP_OWNER_NAME || 'dono').trim();
 const WHATSAPP_CONNECTION_NAME = process.env.WHATSAPP_CONNECTION_NAME || 'Hermes Agent';
 const WHATSAPP_SILENCE_DURATION_MIN = parseInt(process.env.WHATSAPP_SILENCE_DURATION_MIN || '10', 10);
 const SILENCE_DURATION_MS = WHATSAPP_SILENCE_DURATION_MIN * 60 * 1000;
@@ -829,7 +832,7 @@ let onMessagesUpsert = async ({ messages, type }) => {
           "conn.commit()",
           "conn.close()",
         ].join('\n');
-        const proc = spawn('python3', ['-c', _pyScript, _dbPath, chatId, _ownerSid, 'André Alencar', _msgId, 'text', body, String(_ts)], { stdio: 'pipe' });
+        const proc = spawn('python3', ['-c', _pyScript, _dbPath, chatId, _ownerSid, WHATSAPP_OWNER_NAME, _msgId, 'text', body, String(_ts)], { stdio: 'pipe' });
         proc.on('close', (code) => {
           if (code === 0) console.log(`[bridge-owner-msg] Gravado: chat=${chatId} body="${body.slice(0, 60)}"`);
           else proc.stderr.on('data', (d) => console.log(`[bridge-owner-msg] Erro: ${d.toString().slice(0, 100)}`));

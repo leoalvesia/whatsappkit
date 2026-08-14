@@ -38,7 +38,7 @@
     "tone": "técnico e direto",
     "nickname": "Marcos",
     "pet_name": null,
-    "frequent_greeting": "Olá André",
+    "frequent_greeting": "Olá",
     "summary": "Contato tentando oferecer plano de saúde.",
     "intent": "Oferecer cotação de plano de saúde.",
     "frequency": "esporádica",

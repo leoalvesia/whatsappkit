@@ -23,7 +23,7 @@ sys.path.insert(0, "/opt/data/.hermes/plugins/whatsapp-manager")
 
 # ── Mocks mínimos para importar o plugin sem Hermes rodando ─────────────────
 os.environ.setdefault("WHATSAPP_OWNER_NUMBER", "5586981612061")
-os.environ.setdefault("WHATSAPP_OWNER_NAME", "André")
+os.environ.setdefault("WHATSAPP_OWNER_NAME", "dono")
 os.environ.setdefault("BRIDGE_URL", "http://localhost:3000")
 
 # Suprimir logs durante os testes

@@ -209,8 +209,8 @@ def _owner_name_norms() -> set:
 def _is_owner_name(label: str) -> bool:
     """True se `label` identifica o dono, e não um contato.
 
-    Compara o nome inteiro e também o primeiro token: com WHATSAPP_OWNER_NAME="André",
-    um registro gravado como "André Alencar" continua sendo reconhecido como o dono.
+    Compara o nome inteiro e também o primeiro token: com WHATSAPP_OWNER_NAME="Maria",
+    um registro gravado como "Maria Souza" continua sendo reconhecido como o dono.
     Antes isso funcionava só porque o conjunto de nomes estava fixo no código com o nome
     completo — derivando do env, o sobrenome se perderia sem esta checagem.
     """
@@ -5083,8 +5083,8 @@ def _build_personal_prompt(contact_info: dict, relationship: str, history_sectio
     return {
         "context": (
             f"{_datetime_context_block()}"
-            f"{('### ESTILO DE ESCRITA DO ANDRÉ ###\n' + whatsapp_soul + '\n\n') if whatsapp_soul else ''}"
-            "### PERSONA — ALGUÉM RESPONDENDO PELO ANDRÉ ###\n"
+            f"{('### ESTILO DE ESCRITA DO ' + owner_name.upper() + ' ###\n' + whatsapp_soul + '\n\n') if whatsapp_soul else ''}"
+            f"### PERSONA — ALGUÉM RESPONDENDO PELO {owner_name.upper()} ###\n"
             f"Você está respondendo pelo WhatsApp do {owner_name} para um amigo ou familiar próximo dele.\n"
             f"Imagine que você é alguém de confiança que pegou o celular do {owner_name} para avisar como ele está.\n"
             "Tom: descontraído, curto, direto. Frases simples. Nada de texto longo ou formal.\n\n"
@@ -5122,7 +5122,7 @@ def _build_personal_prompt(contact_info: dict, relationship: str, history_sectio
             f"empréstimos, combinados ou promessas de qualquer tipo — mesmo informais ou entre amigos. Se pedirem "
             f"isso, diga que você é um atendente/assistente virtual dele e que o {owner_name} vai te retornar assim "
             "que possível — sem prometer prazo nem dar mais detalhes."
-            f"{(chr(10) + chr(10) + '### REFERÊNCIA DE PRODUTOS E NEGÓCIOS DO ANDRÉ ###' + chr(10) + 'Use apenas se o contato perguntar sobre produtos, preços, serviços ou negócios. Caso contrário, ignore completamente.' + chr(10) + rules_content) if rules_content else ''}"
+            f"{(chr(10) + chr(10) + '### REFERÊNCIA DE PRODUTOS E NEGÓCIOS DO ' + owner_name.upper() + ' ###' + chr(10) + 'Use apenas se o contato perguntar sobre produtos, preços, serviços ou negócios. Caso contrário, ignore completamente.' + chr(10) + rules_content) if rules_content else ''}"
             f"{chr(10)}{_build_catalog_context_block()}"
         )
     }
