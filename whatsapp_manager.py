@@ -166,7 +166,61 @@ class PluginConfig:
         except ValueError:
             return 3600
 
+    @property
+    def whatsapp_pix_key(self) -> str:
+        """Chave Pix padrão do dono, usada quando o item do catálogo não define a sua.
+        Sem default: uma chave errada aqui manda o dinheiro do cliente para outra conta."""
+        return os.getenv("WHATSAPP_PIX_KEY", "").strip()
+
 config = PluginConfig()
+
+
+def _owner_name() -> str:
+    """Nome do dono para uso em prompts, vindo de WHATSAPP_OWNER_NAME.
+
+    Existe para que o mesmo código sirva a qualquer cliente sem edição — antes o nome
+    do dono estava fixo em dezenas de prompts, o que obrigava a manter um fork por cliente.
+
+    O fallback é "dono" (sem artigo) porque os prompts já trazem o artigo: "Relação com
+    o {owner_name}" precisa render "Relação com o dono", não "com o o dono".
+    """
+    return config.whatsapp_owner_name or "dono"
+
+
+def _owner_name_norms() -> set:
+    """Variações normalizadas do nome do dono, para reconhecer as mensagens dele no histórico.
+
+    Deriva de WHATSAPP_OWNER_NAME: nome completo e primeiro nome, com e sem acento.
+    Retorna conjunto vazio se a variável não estiver definida — nesse caso as heurísticas
+    que dependem dela simplesmente não casam, em vez de casar com o nome errado.
+    """
+    full = (config.whatsapp_owner_name or "").strip().lower()
+    if not full:
+        return set()
+    plain = "".join(
+        c for c in unicodedata.normalize("NFD", full) if unicodedata.category(c) != "Mn"
+    )
+    norms = {full, plain}
+    norms.add(full.split()[0])
+    norms.add(plain.split()[0])
+    return {n for n in norms if n}
+
+
+def _is_owner_name(label: str) -> bool:
+    """True se `label` identifica o dono, e não um contato.
+
+    Compara o nome inteiro e também o primeiro token: com WHATSAPP_OWNER_NAME="André",
+    um registro gravado como "André Alencar" continua sendo reconhecido como o dono.
+    Antes isso funcionava só porque o conjunto de nomes estava fixo no código com o nome
+    completo — derivando do env, o sobrenome se perderia sem esta checagem.
+    """
+    norms = _owner_name_norms()
+    if not norms:
+        return False
+    norm = _normalize_text(label or "")
+    if not norm:
+        return False
+    return norm in norms or norm.split()[0] in norms
 
 
 # Mapeamento temporário sender_id -> chat_id (usado entre pre_gateway_dispatch e pre_llm_call)
@@ -848,7 +902,7 @@ def _extract_json_from_text(text: str) -> dict:
 
 
 def _sanitize_classification_result(res: dict) -> dict:
-    """Evita que nomes possessivos/parentesco do André (como 'pai', 'mãe', etc.) sejam classificados como pet_name/nickname do contato."""
+    """Evita que nomes possessivos/parentesco do dono (como 'pai', 'mãe', etc.) sejam classificados como pet_name/nickname do contato."""
     if not isinstance(res, dict):
         return res
     forbidden = {"pai", "mãe", "mae", "tio", "tia", "vô", "vó", "dono", "chefe", "patrão"}
@@ -1105,11 +1159,11 @@ def _get_active_owner_status() -> dict | None:
 
 
 def _generate_status_response(contact_name: str, relationship: str, manual_rel: str | None, status: dict) -> str:
-    """Gera resposta casual como Assistente do André baseada no status e relacionamento."""
+    """Gera resposta casual como Assistente do dono baseada no status e relacionamento."""
     google_key = config.google_api_key
     openai_key = config.openai_api_key
     openrouter_key = config.openrouter_api_key
-    owner_name = config.whatsapp_owner_name or "dono"
+    owner_name = _owner_name()
     classify_model = config.whatsapp_contact_classifier_model or "gemini-3.1-flash-lite"
 
     from datetime import datetime as _dt
@@ -1554,6 +1608,7 @@ def _sync_full_summaries(personal_contacts: dict, state_db_path, max_contacts: i
 
 def _classify_contact_via_llm(name: str, chat_history: str, stats_info: str) -> dict:
     """Classifica contatos usando a API do LLM (Gemini, OpenAI ou OpenRouter) com base no histórico e estatísticas."""
+    owner_name = _owner_name()
     google_key = config.google_api_key
     openai_key = config.openai_api_key
     openrouter_key = config.openrouter_api_key
@@ -1579,17 +1634,17 @@ def _classify_contact_via_llm(name: str, chat_history: str, stats_info: str) -> 
         "   - Use this if they are a family member (mother, father, sibling, cousin, uncle, etc.).\n"
         "   - Recommended tone: \"informal e amigável\".\n"
         "4. \"Filho\":\n"
-        "   - Use this if they are André's child/son.\n"
+        f"   - Use this if they are {owner_name}'s child/son.\n"
         "   - Recommended tone: \"informal e amigável\" or \"informal e carinhoso\".\n"
         "5. \"Cliente\":\n"
-        "   - Use this if they are a customer, client, business contact, lead, or inquiring about purchasing André's systems, API, support, development, or price.\n"
+        f"   - Use this if they are a customer, client, business contact, lead, or inquiring about purchasing {owner_name}'s systems, API, support, development, or price.\n"
         "   - Recommended tone: \"polido e profissional\".\n"
         "6. \"Vendedor\":\n"
-        "   - Use this if they are a salesperson, vendor, or offering/selling products, services, platforms, tools, or partnerships to André.\n"
+        f"   - Use this if they are a salesperson, vendor, or offering/selling products, services, platforms, tools, or partnerships to {owner_name}.\n"
         "   - Recommended tone: \"técnico e direto\" or \"polido e profissional\".\n\n"
         "Extract/determine the following details:\n"
-        "- \"nickname\" (apelido): Any nickname used by André to refer to this contact (e.g. \"Bru\", \"Carlos\", etc.). NEVER extract terms the contact uses to refer to André (like \"pai\", \"mãe\", \"tio\", etc.). null if none.\n"
-        "- \"pet_name\" (nome carinhoso): Terms of endearment used by André to refer to this contact (e.g. \"amor\", \"vida\", \"querida\", etc.). NEVER extract terms the contact uses to refer to André (like \"pai\", \"mãe\", \"tio\", etc.). null if none.\n"
+        f"- \"nickname\" (apelido): Any nickname used by {owner_name} to refer to this contact (e.g. \"Bru\", \"Carlos\", etc.). NEVER extract terms the contact uses to refer to {owner_name} (like \"pai\", \"mãe\", \"tio\", etc.). null if none.\n"
+        f"- \"pet_name\" (nome carinhoso): Terms of endearment used by {owner_name} to refer to this contact (e.g. \"amor\", \"vida\", \"querida\", etc.). NEVER extract terms the contact uses to refer to {owner_name} (like \"pai\", \"mãe\", \"tio\", etc.). null if none.\n"
         "- \"frequent_greeting\" (saudação frequente): The typical greeting phrase used when starting a conversation (e.g. \"Eae mano\", \"Oi amor\", \"Olá\", etc.). null if none.\n"
         "- \"summary\" (resumo): Um resumo CURTO (máx 150 caracteres) sobre o que costumam conversar (em português).\n"
         "- \"intent\" (intenção): O principal objetivo/tópico das últimas mensagens em português (máx 100 caracteres).\n"
@@ -1682,7 +1737,7 @@ def _classify_contact_via_llm(name: str, chat_history: str, stats_info: str) -> 
         "pet_name": None,
         "frequent_greeting": None,
         "summary": "Conversa inicial de suporte/atendimento.",
-        "intent": "Obter ajuda ou informações sobre os sistemas do André.",
+        "intent": f"Obter ajuda ou informações sobre os sistemas do {owner_name}.",
         "frequency": "esporádica",
         "product": None,
         "guidelines": "Responda de forma prestativa.",
@@ -1798,7 +1853,7 @@ def _merge_contact_entries(primary: dict, secondary: dict) -> None:
       2. Campos do secondary se primary tiver placeholder/vazio
       3. relationship: secondary vence se primary não tem manual_relationship
     """
-    _owner_norms = {"andre alencar", "andré alencar", "andre", "andré"}
+    _owner_norms = _owner_name_norms()
 
     # manual_relationship: never overwrite, only fill if missing
     if secondary.get("manual_relationship") and not primary.get("manual_relationship"):
@@ -1939,7 +1994,7 @@ def _sync_contacts_from_db_internal(force: bool = True) -> str:
             _cur_name = _entry.get("name") or ""
             _cur_name_norm = _normalize_text(_cur_name)
             # Substituir nomes placeholder, vazios, ou com nome do dono (dado incorreto)
-            _owner_norms = {"andre alencar", "andré alencar", "andre", "andré"}
+            _owner_norms = _owner_name_norms()
             _is_placeholder = (
                 not _cur_name
                 or _cur_name_norm.startswith("contato ")
@@ -1954,16 +2009,16 @@ def _sync_contacts_from_db_internal(force: bool = True) -> str:
             logger.info(f"[sync] {_names_updated} nome(s) atualizado(s) via bridge /contacts/all")
 
     # 1b-fix. Limpar nomes do dono gravados incorretamente em entradas de contatos externos
-    _owner_name_norms = {"andre alencar", "andré alencar", "andre", "andré"}
+    _owner_norms = _owner_name_norms()
     _fixed_owner_names = 0
     for _k, _v in personal_contacts.items():
         if not isinstance(_v, dict):
             continue
         _cur = _normalize_text(_v.get("name") or "")
-        if _cur in _owner_name_norms:
+        if _cur in _owner_norms:
             # Tentar substituir pelo nome do bridge se disponível
             _bridge_name = (_bridge_names or {}).get(_k, "")
-            if _bridge_name and _normalize_text(_bridge_name) not in _owner_name_norms:
+            if _bridge_name and _normalize_text(_bridge_name) not in _owner_norms:
                 _v["name"] = _bridge_name
             else:
                 _v["name"] = None
@@ -1993,7 +2048,7 @@ def _sync_contacts_from_db_internal(force: bool = True) -> str:
         metadata_updated = True
 
     # Limpar full_summary gerados com dados incorretos (exemplo do prompt ou respostas do bot)
-    _bad_summary_markers = ("pediu orçamento de X", "comprou, elogiou atendimento", "André:")
+    _bad_summary_markers = ("pediu orçamento de X", "comprou, elogiou atendimento", f"{_owner_name()}:")
     cleaned_summaries = 0
     for k, v in personal_contacts.items():
         if not isinstance(v, dict):
@@ -2139,7 +2194,7 @@ def _sync_contacts_from_db_internal(force: bool = True) -> str:
                 summary_val = existing_data.get("summary") or ""
                 # Summaries gerados pelo extrator NL (update manual) também são considerados pendentes
                 is_nl_generated_summary = (
-                    summary_val.startswith("André atualiza") or
+                    summary_val.startswith(f"{_owner_name()} atualiza") or
                     summary_val.startswith("Atualizar informações") or
                     summary_val == "Pendente de classificação."
                 )
@@ -2189,7 +2244,7 @@ def _sync_contacts_from_db_internal(force: bool = True) -> str:
                 
                 existing_saved_name = existing_data.get("name") or ""
                 _esn_norm = _normalize_text(existing_saved_name)
-                _is_bad_name = (not existing_saved_name or re.match(r"^Contato\s+\d+$", existing_saved_name) or _esn_norm in {"andre alencar", "andré alencar", "andre", "andré"})
+                _is_bad_name = (not existing_saved_name or re.match(r"^Contato\s+\d+$", existing_saved_name) or _esn_norm in _owner_name_norms())
                 resolved_name = (name if (_is_bad_name and name) else (None if _is_bad_name else existing_saved_name))
                 personal_contacts[target_key] = {
                     "name": resolved_name,
@@ -2225,7 +2280,7 @@ def _sync_contacts_from_db_internal(force: bool = True) -> str:
 
                 existing_saved_name = existing_data.get("name") or ""
                 _esn_norm = _normalize_text(existing_saved_name)
-                _is_bad_name = (not existing_saved_name or re.match(r"^Contato\s+\d+$", existing_saved_name) or _esn_norm in {"andre alencar", "andré alencar", "andre", "andré"})
+                _is_bad_name = (not existing_saved_name or re.match(r"^Contato\s+\d+$", existing_saved_name) or _esn_norm in _owner_name_norms())
                 resolved_name = (name if (_is_bad_name and name) else (None if _is_bad_name else existing_saved_name))
                 personal_contacts[target_key] = {
                     "name": resolved_name,
@@ -2407,7 +2462,7 @@ def _sync_contacts_from_db_internal(force: bool = True) -> str:
     try:
         if _should_run_style_learning():
             logger.info("[style-learning] Novas mensagens detectadas, iniciando análise de estilo...")
-            _messages_by_rel = _collect_andre_messages_by_relationship(personal_contacts)
+            _messages_by_rel = _collect_owner_messages_by_relationship(personal_contacts)
             if _messages_by_rel:
                 groups_info = ", ".join(f"{r}({len(m)})" for r, m in _messages_by_rel.items())
                 logger.info(f"[style-learning] Grupos coletados: {groups_info}")
@@ -2506,11 +2561,11 @@ _SOUL_LEARNING_STATE_PATH = Path("/opt/data/.hermes/soul_learning_state.json")
 _SOUL_WHATSAPP_PATH = Path("/opt/data/SOUL_WHATSAPP.md")
 _STYLE_SENTINEL = "## EXEMPLOS REAIS DE ESCRITA"
 _MEDIA_FILTER_PREFIXES = ("<Media omitted>", "image omitted", "video omitted", "audio omitted", "sticker omitted")
-_OWNER_NAME_NORMS = {"andre alencar", "andré alencar", "andre", "andré"}
+_OWNER_NAME_NORMS = None  # derivado em runtime via _owner_name_norms()
 
 
 def _should_run_style_learning() -> bool:
-    """Retorna True se há mensagens novas do André desde o último aprendizado."""
+    """Retorna True se há mensagens novas do dono desde o último aprendizado."""
     try:
         bridge_db = Path("/opt/data/.hermes/whatsapp_messages.db")
         state_db = Path("/opt/data/.hermes/state.db")
@@ -2552,11 +2607,11 @@ def _should_run_style_learning() -> bool:
         return False
 
 
-def _collect_andre_messages_by_relationship(
+def _collect_owner_messages_by_relationship(
     personal_contacts: dict,
     limit_per_contact: int = 20,
 ) -> dict[str, list[str]]:
-    """Coleta mensagens do André (from_me=1) agrupadas por relacionamento.
+    """Coleta mensagens do dono (from_me=1) agrupadas por relacionamento.
 
     Retorna dict vazio se nenhum banco disponível ou nenhum contato classificado.
     """
@@ -2580,10 +2635,10 @@ def _collect_andre_messages_by_relationship(
         _owner_name_norm = _normalize_text(config.whatsapp_owner_number or "")
         for key, data in personal_contacts.items():
             rel = data.get("manual_relationship") or data.get("relationship") or "Cliente"
-            # Preferir nickname; usar name só se não for o nome do próprio André
+            # Preferir nickname; usar name só se não for o nome do próprio dono
             name = data.get("nickname") or data.get("name") or ""
             _name_norm = _normalize_text(name)
-            if _name_norm in ("andre alencar", "andré alencar", "andre", "andré"):
+            if _name_norm in _owner_name_norms():
                 name = ""
             elif _name_norm.startswith("contato ") or _name_norm.startswith("usuario ") or _name_norm.startswith("desconhecido"):
                 name = ""
@@ -2687,7 +2742,7 @@ def _collect_andre_messages_by_relationship(
                     if contact_name is None:
                         contact_name = phone_to_name.get(phone_norm, rel)
 
-                    # Buscar mensagens do André
+                    # Buscar mensagens do dono
                     cur.execute(
                         """
                         SELECT body, timestamp FROM messages
@@ -2705,7 +2760,7 @@ def _collect_andre_messages_by_relationship(
                         """,
                         (chat_id, cutoff_ts, 100),
                     )
-                    andre_rows = cur.fetchall()
+                    owner_rows = cur.fetchall()
 
                     # Buscar mensagens do contato (janela estendida para pegar respostas)
                     cur.execute(
@@ -2722,8 +2777,8 @@ def _collect_andre_messages_by_relationship(
                     msgs = []
                     used_contact_ts: set = set()
                     used_contact_bodies: set = set()
-                    for andre_msg, ts in andre_rows:
-                        if any(andre_msg.lower().startswith(p.lower()) for p in _MEDIA_FILTER_PREFIXES):
+                    for owner_msg, ts in owner_rows:
+                        if any(owner_msg.lower().startswith(p.lower()) for p in _MEDIA_FILTER_PREFIXES):
                             continue
                         # Mensagem do contato mais próxima dentro de 24h
                         # (cada timestamp e cada conteúdo usado uma única vez)
@@ -2740,7 +2795,7 @@ def _collect_andre_messages_by_relationship(
                             contact_msg = " ".join(nearest_cb.split())
                             used_contact_ts.add(nearest_cts)
                             used_contact_bodies.add(contact_msg)
-                        msgs.append({"contact": contact_msg, "andre": andre_msg, "contact_name": contact_name})
+                        msgs.append({"contact": contact_msg, "owner": owner_msg, "contact_name": contact_name})
                     if msgs:
                         total_manual += len(msgs)
                         result.setdefault(rel, []).extend(msgs)
@@ -2748,7 +2803,7 @@ def _collect_andre_messages_by_relationship(
                 logger.info(f"[style-learning] {total_manual} mensagens manuais coletadas de {len(chat_ids)} chats. Grupos: {dict((r, len(m)) for r, m in result.items())}")
 
         elif use_state:
-            logger.warning("[style-learning] whatsapp_messages.db ausente — impossível distinguir mensagens manuais do André. Style learning ignorado.")
+            logger.warning("[style-learning] whatsapp_messages.db ausente — impossível distinguir mensagens manuais do dono. Style learning ignorado.")
             return {}
 
         # Cap de 100 por grupo (sample aleatório)
@@ -2765,7 +2820,7 @@ def _collect_andre_messages_by_relationship(
         return filtered
 
     except Exception as e:
-        logger.warning(f"[style-learning] Erro em _collect_andre_messages_by_relationship: {e}")
+        logger.warning(f"[style-learning] Erro em _collect_owner_messages_by_relationship: {e}")
         return {}
 
 
@@ -2802,6 +2857,7 @@ def _build_style_section_with_patterns(messages_by_relationship: dict, llm_patte
 
     O LLM fornece análise de padrões; o Python garante o formato exato dos exemplos.
     """
+    owner_name = _owner_name()
     from datetime import datetime
     hoje = datetime.now().strftime("%d/%m/%Y")
 
@@ -2840,23 +2896,23 @@ def _build_style_section_with_patterns(messages_by_relationship: dict, llm_patte
         lines.append("**Exemplos reais de diálogos (copiados literalmente):**")
         for item in msgs:
             if isinstance(item, dict):
-                andre_text = _sanitize_sensitive(item.get("andre", ""))
-                if not andre_text:
+                owner_text = _sanitize_sensitive(item.get("owner", ""))
+                if not owner_text:
                     continue
                 contact_text = _sanitize_sensitive(item.get("contact") or "")
                 label = item.get("contact_name") or rel
-                if _normalize_text(label) in _OWNER_NAME_NORMS:
+                if _is_owner_name(label):
                     label = rel
                 if contact_text:
                     lines.append(f'- {label}: "{contact_text}"')
-                    lines.append(f'- André: "{andre_text}"')
+                    lines.append(f'- {owner_name}: "{owner_text}"')
                     lines.append("")
                 else:
-                    lines.append(f'- André: "{andre_text}"')
+                    lines.append(f'- {owner_name}: "{owner_text}"')
             else:
                 sanitized = _sanitize_sensitive(item)
                 if sanitized:
-                    lines.append(f'- André: "{sanitized}"')
+                    lines.append(f'- {owner_name}: "{sanitized}"')
         lines.append("")
 
     return "\n".join(lines)
@@ -2868,6 +2924,7 @@ def _build_style_section_directly(messages_by_relationship: dict) -> str:
     Inclui todas as mensagens coletadas como exemplos literais.
     Usado como fallback quando o LLM falha ou como complemento garantido.
     """
+    owner_name = _owner_name()
     from datetime import datetime
     hoje = datetime.now().strftime("%d/%m/%Y")
 
@@ -2877,26 +2934,26 @@ def _build_style_section_directly(messages_by_relationship: dict) -> str:
     ]
     for rel, msgs in messages_by_relationship.items():
         lines.append(f"### {rel}")
-        lines.append("**Exemplos reais de diálogos do André:**")
+        lines.append(f"**Exemplos reais de diálogos do {owner_name}:**")
         for item in msgs:
             if isinstance(item, dict):
-                andre_text = _sanitize_sensitive(item.get("andre", ""))
-                if not andre_text:
+                owner_text = _sanitize_sensitive(item.get("owner", ""))
+                if not owner_text:
                     continue
                 contact_text = _sanitize_sensitive(item.get("contact") or "")
                 label = item.get("contact_name") or rel
-                if _normalize_text(label) in _OWNER_NAME_NORMS:
+                if _is_owner_name(label):
                     label = rel
                 if contact_text:
                     lines.append(f'- {label}: "{contact_text}"')
-                    lines.append(f'- André: "{andre_text}"')
+                    lines.append(f'- {owner_name}: "{owner_text}"')
                     lines.append("")
                 else:
-                    lines.append(f'- André: "{andre_text}"')
+                    lines.append(f'- {owner_name}: "{owner_text}"')
             else:
                 sanitized = _sanitize_sensitive(item)
                 if sanitized:
-                    lines.append(f'- André: "{sanitized}"')
+                    lines.append(f'- {owner_name}: "{sanitized}"')
         lines.append("")
 
     return "\n".join(lines)
@@ -2909,6 +2966,7 @@ def _extract_style_patterns_via_llm(messages_by_relationship: dict) -> str | Non
     Os exemplos de diálogo são inseridos pelo Python com formato garantido.
     Retorna seção markdown pronta para inserção no SOUL_WHATSAPP.md, ou None em falha.
     """
+    owner_name = _owner_name()
     from datetime import datetime
 
     hoje = datetime.now().strftime("%d/%m/%Y")
@@ -2919,21 +2977,21 @@ def _extract_style_patterns_via_llm(messages_by_relationship: dict) -> str | Non
         lines = []
         for item in msgs[:30]:
             if isinstance(item, dict):
-                andre_text = _sanitize_sensitive(item.get("andre", ""))
-                if not andre_text:
+                owner_text = _sanitize_sensitive(item.get("owner", ""))
+                if not owner_text:
                     continue
                 contact_text = _sanitize_sensitive(item.get("contact") or "")
                 label = item.get("contact_name") or rel
-                if _normalize_text(label) in _OWNER_NAME_NORMS:
+                if _is_owner_name(label):
                     label = rel
                 if contact_text:
-                    lines.append(f'{label}: "{contact_text}" / André: "{andre_text}"')
+                    lines.append(f'{label}: "{contact_text}" / {owner_name}: "{owner_text}"')
                 else:
-                    lines.append(f'André: "{andre_text}"')
+                    lines.append(f'{owner_name}: "{owner_text}"')
             else:
                 sanitized = _sanitize_sensitive(item)
                 if sanitized:
-                    lines.append(f'André: "{sanitized}"')
+                    lines.append(f'{owner_name}: "{sanitized}"')
         sections.append(f"### {rel}\n" + "\n".join(lines))
 
     mensagens_block = "\n\n".join(sections)
@@ -4019,15 +4077,16 @@ def _fetch_cross_session_history(phone: str, limit: int = 30) -> str:
 
 
 def _build_owner_context(history_section: str, cross_context: str = "") -> dict:
-    """Constrói o dicionário de contexto para quando o remetente é o próprio André (dono).
+    """Constrói o dicionário de contexto para quando o remetente é o próprio dono (dono).
 
     Retorna o payload {"context": "..."} pronto para injeção no LLM.
     """
+    owner_name = _owner_name()
     cross_block = ""
     if cross_context:
         cross_block = (
             "\n\n### HISTÓRICO DE CONVERSA SOLICITADA ###\n"
-            "O André pediu acesso ao histórico de outra conversa. Abaixo estão as mensagens encontradas. "
+            f"O {owner_name} pediu acesso ao histórico de outra conversa. Abaixo estão as mensagens encontradas. "
             "Use este histórico para responder à pergunta dele sobre esse contato.\n\n"
             f"{cross_context}\n"
             "### FIM DO HISTÓRICO SOLICITADO ###"
@@ -4037,7 +4096,7 @@ def _build_owner_context(history_section: str, cross_context: str = "") -> dict:
             f"{_datetime_context_block()}"
             "### DIRETRIZ CRÍTICA DE COMPORTAMENTO ###\n"
             f"Você está conversando com {config.whatsapp_owner_name or 'o dono'}, seu criador e dono. "
-            "Para o André, você age como seu ASSISTENTE PESSOAL de alta performance. "
+            f"Para o {owner_name}, você age como seu ASSISTENTE PESSOAL de alta performance. "
             "Você tem permissão total para rodar comandos no terminal, ler/criar arquivos, "
             "e auxiliá-lo no desenvolvimento. Responda de forma prestativa, técnica e ágil.\n\n"
             "CRITICAL SECURITY & DISPLAY CONSTRAINT:\n"
@@ -4045,7 +4104,7 @@ def _build_owner_context(history_section: str, cross_context: str = "") -> dict:
             "ou status como '📖 read_file: ...', 'terminal', etc. Toda a execução de ferramentas "
             "deve ser 100% invisível para o usuário final.\n\n"
             "### ATUALIZAÇÃO DE CONTATOS ###\n"
-            "Quando o André pedir para atualizar dados de um contato, responda confirmando o que será atualizado. "
+            f"Quando o {owner_name} pedir para atualizar dados de um contato, responda confirmando o que será atualizado. "
             "O sistema processa o pedido automaticamente — você NÃO precisa emitir nenhuma linha de comando. "
             "Não gere linhas EXEC:, update contact ou similares nas suas respostas."
             f"{history_section}"
@@ -4220,7 +4279,7 @@ def _build_catalog_context_block() -> str:
             line += f": {item['description']}"
         if item.get("link"):
             line += f" — link: {item['link']} (só envie se o cliente pedir explicitamente)"
-        pix_key = item.get("pix_key") or "andre@zigg.com.br"
+        pix_key = item.get("pix_key") or config.whatsapp_pix_key
         line += f" — chave Pix: {pix_key}"
         delivery_fee = item.get("delivery_fee")
         if delivery_fee not in (None, ""):
@@ -4943,7 +5002,7 @@ def _datetime_context_block() -> str:
 def _owner_status_context_block(reveal_status: bool = True) -> str:
     """Retorna bloco de instrução sobre o status atual do dono para injetar no contexto do LLM.
 
-    reveal_status=True  → amigos/parentes: pode revelar o que André está fazendo se perguntado
+    reveal_status=True  → amigos/parentes: pode revelar o que dono está fazendo se perguntado
     reveal_status=False → clientes/desconhecidos: só diz que está ocupado, sem detalhes
     """
     status = _get_active_owner_status()
@@ -4951,7 +5010,7 @@ def _owner_status_context_block(reveal_status: bool = True) -> str:
         return ""
 
     from datetime import datetime as _dt
-    owner_name = config.whatsapp_owner_name or "dono"
+    owner_name = _owner_name()
     description = status.get("description", "ocupado")
     until_iso = status.get("until_iso")
     until_str = ""
@@ -4990,7 +5049,7 @@ def _build_personal_prompt(contact_info: dict, relationship: str, history_sectio
     Inclui nome, relacionamento, tom, apelidos, saudação frequente e diretrizes.
     Retorna {"context": "..."}.
     """
-    owner_name = config.whatsapp_owner_name or "dono"
+    owner_name = _owner_name()
     name = contact_info.get("name", "Contato Pessoal")
     tone = contact_info.get("tone", "informal e amigável")
     guidelines = contact_info.get("guidelines", f"Responda como {owner_name}.")
@@ -5026,11 +5085,11 @@ def _build_personal_prompt(contact_info: dict, relationship: str, history_sectio
             f"{_datetime_context_block()}"
             f"{('### ESTILO DE ESCRITA DO ANDRÉ ###\n' + whatsapp_soul + '\n\n') if whatsapp_soul else ''}"
             "### PERSONA — ALGUÉM RESPONDENDO PELO ANDRÉ ###\n"
-            "Você está respondendo pelo WhatsApp do André para um amigo ou familiar próximo dele.\n"
-            "Imagine que você é alguém de confiança que pegou o celular do André para avisar como ele está.\n"
+            f"Você está respondendo pelo WhatsApp do {owner_name} para um amigo ou familiar próximo dele.\n"
+            f"Imagine que você é alguém de confiança que pegou o celular do {owner_name} para avisar como ele está.\n"
             "Tom: descontraído, curto, direto. Frases simples. Nada de texto longo ou formal.\n\n"
             f"Nome do contato: {name}{(' (apelido: ' + nickname + ')') if nickname else ''}\n"
-            f"Relação com o André: {relationship}\n"
+            f"Relação com o {owner_name}: {relationship}\n"
             f"Tom de voz: {tone}\n"
             f"{details}"
             f"Diretrizes específicas: {guidelines}\n\n"
@@ -5105,7 +5164,7 @@ def _build_support_prompt(
 
     Retorna {"context": "..."}.
     """
-    owner_name = config.whatsapp_owner_name or "dono"
+    owner_name = _owner_name()
     contact_block = ""
     if contact_info:
         name = contact_info.get("name", "")
@@ -5147,7 +5206,7 @@ def _build_support_prompt(
             lines.append(f"Produto/Serviço envolvido: {product}")
         lines.append(
             "\nAdapte o tom, nível de formalidade e linguagem conforme o relacionamento acima. "
-            "Se for Amigo, Parente ou similar, use o estilo informal e natural do André nas mensagens anteriores. "
+            f"Se for Amigo, Parente ou similar, use o estilo informal e natural do {owner_name} nas mensagens anteriores. "
             "Se houver apelido ou saudação frequente definidos, use-os de forma natural."
         )
         contact_block = "\n".join(lines) + "\n\n"
@@ -5219,6 +5278,7 @@ def _live_classify_contact(
     Returns:
         Dicionário com os dados classificados, ou None se não houver dados suficientes.
     """
+    owner_name = _owner_name()
     # Nunca classificar o próprio dono
     owner_phone_clean = _normalize_brazilian_phone(
         "".join(c for c in (config.whatsapp_owner_number or "").split("@")[0] if c.isdigit())
@@ -5324,7 +5384,7 @@ def _live_classify_contact(
                 "summary": contact_info.get("summary", "Conversa muito curta."),
                 "intent": "Contato inicial.",
                 "frequency": contact_info.get("frequency", "esporádica"),
-                "guidelines": contact_info.get("guidelines", "Responda como André."),
+                "guidelines": contact_info.get("guidelines", f"Responda como {owner_name}."),
             }
         else:
             classification = {
@@ -5347,7 +5407,7 @@ def _live_classify_contact(
             rows_msgs = cursor.fetchall()
             rows_msgs.reverse()
             history_lines = [
-                f"[{'André' if f_me else (s_name or name or 'Contato')}]: {msg_body}"
+                f"[{owner_name if f_me else (s_name or name or 'Contato')}]: {msg_body}"
                 for f_me, s_name, msg_body in rows_msgs
             ]
             chat_history = "\n".join(history_lines)
@@ -5452,9 +5512,9 @@ def commit_file_to_repo(repo_user, repo_name, config_token, local_path, github_p
 
 
 def _transcribe_outgoing_audio(event, media_info: dict) -> None:
-    """Transcreve áudios enviados pelo André e persiste no banco.
+    """Transcreve áudios enviados pelo dono e persiste no banco.
 
-    Permite que o style learning capture mensagens de voz do André como texto.
+    Permite que o style learning capture mensagens de voz do dono como texto.
     """
     try:
         transcription = _process_media_message(event)
@@ -5574,7 +5634,7 @@ def pre_gateway_dispatch(*args, **kwargs):
     resolved_sender = _resolve_phone_from_jid(sender_id)
     clean_sender = "".join(c for c in resolved_sender.split("@")[0].split(":")[0] if c.isdigit())
 
-    # Identificar dono (André)
+    # Identificar dono (dono)
     owner_number = config.whatsapp_owner_number
     if not owner_number:
         return None  # Não definido → plugin não faz nada
@@ -5748,7 +5808,7 @@ def pre_gateway_dispatch(*args, **kwargs):
             except Exception as addr_err:
                 logger.error(f"[sale-address] Erro ao capturar endereço pendente: {addr_err}")
 
-    # Transcrever áudios ENVIADOS pelo André para enriquecer o style learning
+    # Transcrever áudios ENVIADOS pelo dono para enriquecer o style learning
     if is_owner and media_info["has_media"] and media_info["media_type"] in ["ptt", "audio"]:
         _transcribe_outgoing_audio(event, media_info)
     elif is_owner and not media_info["has_media"]:
@@ -5785,7 +5845,7 @@ def pre_gateway_dispatch(*args, **kwargs):
                 logger.info(f"[audio-out] Transcrição via fallback: {Path(_audio_path).name}")
                 _transcribe_outgoing_audio(event, media_info)
 
-    # Persistir mensagens manuais do André no SQLite (Hermes não grava from_me=1 automaticamente)
+    # Persistir mensagens manuais do dono no SQLite (Hermes não grava from_me=1 automaticamente)
     # Nota: para from_me=1, sender_id==chat_id, então is_self_chat seria True erroneamente.
     # Usamos _is_from_me + verificar que não é self-chat pelo chat_id (@g.us excluído também)
     _is_group = "@g.us" in chat_id
@@ -5893,7 +5953,7 @@ def pre_gateway_dispatch(*args, **kwargs):
     ]
     if (is_owner or _is_from_me) and any(kw in normalized_msg for kw in _help_keywords):
         chat_id = str(event.source.chat_id) if event.source.chat_id else ""
-        owner_name = config.whatsapp_owner_name or "André"
+        owner_name = _owner_name()
         help_text = (
             f"Olá, {owner_name}! Aqui estão os comandos e funcionalidades disponíveis:\n\n"
             "*📋 COMANDOS DE CONTROLE*\n"
@@ -6728,6 +6788,7 @@ def pre_gateway_dispatch(*args, **kwargs):
 
 
 def pre_llm_call(*args, **kwargs):
+    owner_name = _owner_name()
     context = kwargs.get("context")
     if not context:
         for arg in args:
@@ -6785,7 +6846,7 @@ def pre_llm_call(*args, **kwargs):
     clean_sender = "".join(c for c in sender_id.split("@")[0].split(":")[0] if c.isdigit()) if sender_id else ""
     clean_owner = "".join(c for c in owner_number.split("@")[0].split(":")[0] if c.isdigit())
 
-    # ── Modo A: André (dono) ──────────────────────────────────────────────
+    # ── Modo A: dono (dono) ──────────────────────────────────────────────
     if _normalize_brazilian_phone(clean_sender) == _normalize_brazilian_phone(clean_owner):
         logger.info(
             f"[prompt] Modo A (dono) ativado: sender_id={sender_id!r} clean_sender={clean_sender!r} "
@@ -6797,11 +6858,11 @@ def pre_llm_call(*args, **kwargs):
             "\n\n### HISTÓRICO DE MENSAGENS ANTERIORES ###\n"
             "Abaixo está o histórico recente da conversa para você entender o contexto anterior. "
             "NÃO responda novamente a essas mensagens do histórico, use-as apenas como contexto "
-            "para responder à nova mensagem do André.\n\n"
+            f"para responder à nova mensagem do {owner_name}.\n\n"
             f"{history_context}"
         ) if history_context else ""
 
-        # Detectar se André está perguntando sobre outra conversa/contato
+        # Detectar se dono está perguntando sobre outra conversa/contato
         cross_context = ""
         current_text = _last_owner_text.get(sender_id, "")
         detected_name = _detect_contact_query(current_text)
@@ -7139,7 +7200,7 @@ def post_llm_call(*args, **kwargs):
             r"já (adicion|inclu|registr|atualiz|salv)",
         ]
         if any(re.search(p, clean_text, re.IGNORECASE) for p in _action_patterns):
-            owner_name = config.whatsapp_owner_name or "dono"
+            owner_name = _owner_name()
             clean_text = f"isso é com o {owner_name} mesmo, não tenho como fazer por aqui"
 
         # Redactar telefones

@@ -32,6 +32,10 @@ class BaseWhatsAppManagerTest(unittest.IsolatedAsyncioTestCase):
         self.ctx = MockContext()
         self.env_patcher = patch.dict(os.environ, {
             "WHATSAPP_OWNER_NUMBER": "5511999999999",
+            # O nome do dono deixou de ser fixo no código e agora vem daqui. Os testes que
+            # afirmam "André" nos prompts continuam válidos e passam a provar que a
+            # parametrização por WHATSAPP_OWNER_NAME funciona ponta a ponta.
+            "WHATSAPP_OWNER_NAME": "André",
             "WHATSAPP_OWNER_MODEL": "gemini-3.5-flash-owner",
             "WHATSAPP_CLIENT_MODEL": "gemini-3.5-flash-client"
         })
@@ -2887,7 +2891,7 @@ class TestFetchCrossSessionHistory(BaseWhatsAppManagerTest):
         result = _fetch_cross_session_history("5511777777777")
 
         self.assertIn("Isabel: oi André, tudo bem?", result)
-        self.assertIn("dono: tudo sim!", result)
+        self.assertIn("André: tudo sim!", result)
 
     @patch("pathlib.Path.exists", return_value=False)
     def test_returns_empty_when_no_db(self, mock_exists):
@@ -2935,7 +2939,7 @@ class TestFetchCrossSessionHistory(BaseWhatsAppManagerTest):
 
         from whatsapp_manager import _fetch_cross_session_history
         result = _fetch_cross_session_history("5511777777777")
-        self.assertIn("dono: resposta do bot", result)
+        self.assertIn("André: resposta do bot", result)
         self.assertIn("Contato: mensagem do contato", result)
 
 
@@ -3697,7 +3701,7 @@ class TestShouldRunStyleLearning(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result)
 
 
-class TestCollectAndreMessagesByRelationship(unittest.IsolatedAsyncioTestCase):
+class TestCollectOwnerMessagesByRelationship(unittest.IsolatedAsyncioTestCase):
     """Testa coleta de mensagens do André agrupadas por relacionamento."""
 
     def _make_sqlite_mock(self, chat_ids, messages_by_chat, contact_msgs_by_chat=None):
@@ -3761,7 +3765,7 @@ class TestCollectAndreMessagesByRelationship(unittest.IsolatedAsyncioTestCase):
 
         with patch("whatsapp_manager.Path", side_effect=self._path_factory(bridge_exists=True, state_exists=False)), \
              patch("whatsapp_manager.sqlite3.connect", return_value=mock_conn):
-            result = whatsapp_manager._collect_andre_messages_by_relationship(personal_contacts)
+            result = whatsapp_manager._collect_owner_messages_by_relationship(personal_contacts)
 
         self.assertIn("Cliente", result)
         self.assertIn("Amigo", result)
@@ -3777,7 +3781,7 @@ class TestCollectAndreMessagesByRelationship(unittest.IsolatedAsyncioTestCase):
         )
         with patch("whatsapp_manager.Path", side_effect=self._path_factory()), \
              patch("whatsapp_manager.sqlite3.connect", return_value=mock_conn):
-            result = whatsapp_manager._collect_andre_messages_by_relationship(personal_contacts)
+            result = whatsapp_manager._collect_owner_messages_by_relationship(personal_contacts)
         self.assertIn("Cliente", result)
         dialogues = [m for m in result["Cliente"] if m.get("contact")]
         self.assertGreater(len(dialogues), 0, "Deve existir pelo menos um diálogo com mensagem do contato")
@@ -3794,7 +3798,7 @@ class TestCollectAndreMessagesByRelationship(unittest.IsolatedAsyncioTestCase):
         )
         with patch("whatsapp_manager.Path", side_effect=self._path_factory()), \
              patch("whatsapp_manager.sqlite3.connect", return_value=mock_conn):
-            result = whatsapp_manager._collect_andre_messages_by_relationship(personal_contacts)
+            result = whatsapp_manager._collect_owner_messages_by_relationship(personal_contacts)
         if "Cliente" in result:
             paired = [m for m in result["Cliente"] if m.get("contact") == "resposta unica"]
             self.assertEqual(len(paired), 1, "Mesma mensagem do contato não deve aparecer em múltiplos pares")
@@ -3810,7 +3814,7 @@ class TestCollectAndreMessagesByRelationship(unittest.IsolatedAsyncioTestCase):
         )
         with patch("whatsapp_manager.Path", side_effect=self._path_factory()), \
              patch("whatsapp_manager.sqlite3.connect", return_value=mock_conn):
-            result = whatsapp_manager._collect_andre_messages_by_relationship(personal_contacts)
+            result = whatsapp_manager._collect_owner_messages_by_relationship(personal_contacts)
         if "Cliente" in result:
             paired = [m for m in result["Cliente"] if m.get("contact")]
             self.assertEqual(len(paired), 0, "Mensagem fora de 24h não deve ser pareada")
@@ -3825,7 +3829,7 @@ class TestCollectAndreMessagesByRelationship(unittest.IsolatedAsyncioTestCase):
         )
         with patch("whatsapp_manager.Path", side_effect=self._path_factory()), \
              patch("whatsapp_manager.sqlite3.connect", return_value=mock_conn):
-            result = whatsapp_manager._collect_andre_messages_by_relationship(personal_contacts)
+            result = whatsapp_manager._collect_owner_messages_by_relationship(personal_contacts)
         if "Cliente" in result:
             paired = [m for m in result["Cliente"] if m.get("contact")]
             self.assertTrue(len(paired) > 0)
@@ -3871,10 +3875,10 @@ class TestCollectAndreMessagesByRelationship(unittest.IsolatedAsyncioTestCase):
 
         with patch("whatsapp_manager.Path", side_effect=self._path_factory(bridge_exists=True, state_exists=True)), \
              patch("whatsapp_manager.sqlite3.connect", side_effect=connect_factory):
-            result = whatsapp_manager._collect_andre_messages_by_relationship(personal_contacts)
+            result = whatsapp_manager._collect_owner_messages_by_relationship(personal_contacts)
 
         if "Cliente" in result:
-            andres = [item["andre"] if isinstance(item, dict) else item for item in result["Cliente"]]
+            andres = [item["owner"] if isinstance(item, dict) else item for item in result["Cliente"]]
             self.assertNotIn(bot_reply, andres)
 
     def test_filters_media_messages(self):
@@ -3891,22 +3895,22 @@ class TestCollectAndreMessagesByRelationship(unittest.IsolatedAsyncioTestCase):
 
         with patch("whatsapp_manager.Path", side_effect=self._path_factory(bridge_exists=True, state_exists=False)), \
              patch("whatsapp_manager.sqlite3.connect", return_value=mock_conn):
-            result = whatsapp_manager._collect_andre_messages_by_relationship(personal_contacts)
+            result = whatsapp_manager._collect_owner_messages_by_relationship(personal_contacts)
 
         if "Parente" in result:
             for item in result["Parente"]:
-                text = item["andre"] if isinstance(item, dict) else item
+                text = item["owner"] if isinstance(item, dict) else item
                 self.assertNotIn("omitted", text.lower())
 
     def test_returns_empty_when_db_missing(self):
         with patch("whatsapp_manager.Path", side_effect=self._path_factory(bridge_exists=False, state_exists=False)):
-            result = whatsapp_manager._collect_andre_messages_by_relationship({"any": {}})
+            result = whatsapp_manager._collect_owner_messages_by_relationship({"any": {}})
 
         self.assertEqual(result, {})
 
     def test_returns_empty_on_exception(self):
         with patch("whatsapp_manager.Path", side_effect=Exception("db error")):
-            result = whatsapp_manager._collect_andre_messages_by_relationship({})
+            result = whatsapp_manager._collect_owner_messages_by_relationship({})
         self.assertEqual(result, {})
 
 
@@ -4086,6 +4090,7 @@ class TestUpdateSoulWhatsappWithExamples(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(call_kwargs.kwargs.get("github_path") or call_kwargs[1].get("github_path") or call_kwargs[0][3], "SOUL_WHATSAPP.md")
 
 
+@patch.dict(os.environ, {"WHATSAPP_OWNER_NAME": "André"})
 class TestStyleLearningRegressions(unittest.IsolatedAsyncioTestCase):
     """Testes de regressão para bugs conhecidos no style learning."""
 
@@ -4150,8 +4155,8 @@ class TestStyleLearningRegressions(unittest.IsolatedAsyncioTestCase):
         from whatsapp_manager import _build_style_section_directly
         messages_by_rel = {
             "Cliente": [
-                {"contact": "vc faz sites?", "andre": "Faço sim!", "contact_name": "João"},
-                {"contact": None, "andre": "vendeu?", "contact_name": "Maria"},
+                {"contact": "vc faz sites?", "owner": "Faço sim!", "contact_name": "João"},
+                {"contact": None, "owner": "vendeu?", "contact_name": "Maria"},
             ]
         }
         result = _build_style_section_directly(messages_by_rel)
@@ -4169,8 +4174,8 @@ class TestStyleLearningRegressions(unittest.IsolatedAsyncioTestCase):
         from whatsapp_manager import _build_style_section_directly
         messages_by_rel = {
             "Cliente": [
-                {"contact": None, "andre": "saldo R$ 5.000,00 na conta", "contact_name": "João"},
-                {"contact": None, "andre": "oi tudo bem?", "contact_name": "João"},
+                {"contact": None, "owner": "saldo R$ 5.000,00 na conta", "contact_name": "João"},
+                {"contact": None, "owner": "oi tudo bem?", "contact_name": "João"},
             ]
         }
         result = _build_style_section_directly(messages_by_rel)
@@ -4182,7 +4187,7 @@ class TestStyleLearningRegressions(unittest.IsolatedAsyncioTestCase):
         from whatsapp_manager import _build_style_section_directly
         messages_by_rel = {
             "Cliente": [
-                {"contact": None, "andre": "oi", "contact_name": "Cliente"},
+                {"contact": None, "owner": "oi", "contact_name": "Cliente"},
             ]
         }
         result = _build_style_section_directly(messages_by_rel)
@@ -4219,13 +4224,14 @@ class TestStyleLearningRegressions(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(msg_count, 2)
 
 
+@patch.dict(os.environ, {"WHATSAPP_OWNER_NAME": "André"})
 class TestBuildStyleSectionWithPatterns(unittest.TestCase):
     """Testa a geração do SOUL_WHATSAPP.md com padrões do LLM + exemplos do Python."""
 
     def _make_msgs(self, contact_name, pairs):
         """Cria lista de dicts com pares (contact_msg, andre_msg). None = sem contexto."""
         return [
-            {"contact": c, "andre": a, "contact_name": contact_name}
+            {"contact": c, "owner": a, "contact_name": contact_name}
             for c, a in pairs
         ]
 
@@ -5158,7 +5164,7 @@ class TestPostLlmCall(BaseWhatsAppManagerTest):
         mock_urlopen.return_value.__enter__ = lambda s: s
         mock_urlopen.return_value.__exit__ = MagicMock(return_value=False)
         result = self._call("5511888888888@s.whatsapp.net", "pronto, adicionei o contato.")
-        self.assertIn("dono", result["assistant_response"])
+        self.assertIn("André", result["assistant_response"])
         self.assertNotIn("adicionei", result["assistant_response"])
 
     @patch("urllib.request.urlopen")
