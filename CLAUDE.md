@@ -81,6 +81,10 @@ O mesmo arquivo existe em vários caminhos — edite o certo:
 - `google_api.py` existe na raiz e em `deploy/scripts/google_api.py`.
 - `skills/whatsapp-logs-diagnostics/SKILL.md` está duplicado em `deploy/skills/`.
 
+## Deploy de alterações
+
+O runbook completo está em `.gemini/skills/deploy-plugin/SKILL.md` (escrito para o Gemini CLI, mas o procedimento é agnóstico): commit e push no `main` → botão **Pull** do plugin na aba *Plugins* do Dashboard do Hermes → **Restart** do container no Portainer → conferir `grep "whatsapp-manager" /opt/data/.hermes/logs/hermes.log | tail -20` procurando por `bridge.js atualizado` → testar com `stop_bot` no WhatsApp. Alterações no plugin só carregam após o restart. `bot_state.json` sobrevive ao restart.
+
 ## Grafo de conhecimento (graphify)
 
 `graphify-out/` está commitado (grafo + cache AST + `GRAPH_REPORT.md`). `GEMINI.md` e `.agents/rules/graphify.md` mandam usar `graphify query "<pergunta>"` antes de grepar, `graphify path "<A>" "<B>"` para relações e `graphify explain "<conceito>"`; e `graphify update .` após mudar código. Verifique se o CLI `graphify` existe antes de depender disso — sem ele, `GRAPH_REPORT.md` ainda serve para visão de arquitetura.
