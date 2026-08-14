@@ -3282,7 +3282,9 @@ class TestFieldLevelMergeAndPushFailureNotification(BaseWhatsAppManagerTest):
     @patch("whatsapp_manager._human_send")
     def test_notifies_owner_when_push_fails(self, mock_send):
         from whatsapp_manager import _notify_owner_if_push_failed
-        _notify_owner_if_push_failed(lambda: False, "os contatos")
+        # O aviso só faz sentido quando o sync está configurado — daí o repo e o token.
+        with patch.dict(os.environ, {"CONFIG_REPO": "contexto", "CONFIG_GITHUB_TOKEN": "tok"}):
+            _notify_owner_if_push_failed(lambda: False, "os contatos")
         mock_send.assert_called_once()
         chat_id, message = mock_send.call_args[0]
         self.assertIn("5511999999999", chat_id)
@@ -3291,7 +3293,20 @@ class TestFieldLevelMergeAndPushFailureNotification(BaseWhatsAppManagerTest):
     @patch("whatsapp_manager._human_send")
     def test_does_not_notify_when_push_succeeds(self, mock_send):
         from whatsapp_manager import _notify_owner_if_push_failed
-        _notify_owner_if_push_failed(lambda: True, "os contatos")
+        with patch.dict(os.environ, {"CONFIG_REPO": "contexto", "CONFIG_GITHUB_TOKEN": "tok"}):
+            _notify_owner_if_push_failed(lambda: True, "os contatos")
+        mock_send.assert_not_called()
+
+    @patch("whatsapp_manager._human_send")
+    def test_does_not_notify_when_sync_is_not_configured(self, mock_send):
+        """Sem repo/token não há sync, então não há falha a avisar.
+
+        Antes o dono recebia '⚠️ Não consegui sincronizar' a cada contato salvo, venda
+        registrada e item de catálogo alterado em qualquer instalação sem GitHub.
+        """
+        from whatsapp_manager import _notify_owner_if_push_failed
+        with patch.dict(os.environ, {"CONFIG_REPO": "", "CONFIG_GITHUB_TOKEN": ""}):
+            _notify_owner_if_push_failed(lambda: False, "os contatos")
         mock_send.assert_not_called()
 
 

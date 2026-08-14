@@ -34,21 +34,31 @@
 #   Não requer variável de ambiente — configure diretamente no proxy do Easypanel
 #
 # 🤖 PROVIDER DE IA (obrigatória na prática)
-#   GOOGLE_API_KEY         Chave da Google AI Studio / Vertex AI
-#                          → todos os modelos padrão usam gemini-3.1-flash-lite
-#                            via provider "gemini"; sem esta chave o bot não responde
+#   OPENROUTER_API_KEY     Chave da OpenRouter — é o provider padrão desta stack
+#                          → texto usa deepseek/deepseek-v4-flash; mídia (áudio e
+#                            imagem) usa google/gemini-3.1-flash-lite via OpenRouter,
+#                            porque o DeepSeek aceita apenas texto
+#                          → DEIXE GOOGLE_API_KEY e OPENAI_API_KEY VAZIAS: o plugin
+#                            tenta Google → OpenAI → OpenRouter e para na primeira
+#                            chave preenchida. Se qualquer uma delas tiver valor, o
+#                            OpenRouter nunca é alcançado.
 #
 # 🟢 WHATSAPP — obrigatórias para o bot funcionar
 #   WHATSAPP_ENABLED       Deve ser definida explicitamente como "true" (padrão do compose)
 #                          → defina "false" apenas antes de parear pela primeira vez;
 #                            volte para "true" após parear e reiniciar
 #   WHATSAPP_OWNER_NUMBER  Número do dono no formato internacional sem + (ex: 5511999999999)
-#   WHATSAPP_OWNER_NAME    Nome do dono usado nos prompts e respostas (ex: André)
+#   WHATSAPP_OWNER_NAME    Nome do dono usado nos prompts e respostas (ex: Leo Alves)
+#                          → substitui o nome que antes estava fixo no código
 #
-# 📦 SINCRONIZAÇÃO DE CONTEXTO VIA GITHUB (obrigatória na prática)
-#   CONFIG_GITHUB_TOKEN    Token GitHub (PAT) com acesso de leitura ao CONFIG_REPO
-#                          → sem ele, personal_contacts.json e SOUL_WHATSAPP.md
-#                            não são sincronizados; o bot sobe mas opera sem contexto
+# 📦 SINCRONIZAÇÃO DE CONTEXTO VIA GITHUB (opcional)
+#   CONFIG_GITHUB_TOKEN    Token GitHub (PAT) com acesso ao CONFIG_REPO
+#                          → serve para versionar personal_contacts.json e as personas
+#                            num repositório privado. Sem ele o bot funciona normalmente
+#                            com os arquivos do volume; só não há backup nem histórico.
+#                          → sem repo/token o plugin nem tenta o push, então não gera
+#                            aviso no WhatsApp do dono. O aviso só aparece quando o sync
+#                            está configurado e falhou de verdade.
 #
 # ██████████████████████████████████████████████████████████████████████████████
 # ▶ VARIÁVEIS OPCIONAIS
@@ -60,13 +70,21 @@
 #   OPENROUTER_API_KEY     Chave da OpenRouter (acesso multi-provider)
 #   AISA_API_KEY           Chave da AISA (provider de IA)
 #
-# 🤖 MODELOS POR FUNÇÃO (padrão: gemini-3.1-flash-lite / provider: gemini)
-#   WHATSAPP_OWNER_MODEL          Modelo para responder ao dono
-#   WHATSAPP_OWNER_PROVIDER       Provider do modelo do dono
-#   WHATSAPP_CLIENT_MODEL         Modelo para responder a clientes/desconhecidos
-#   WHATSAPP_CLIENT_PROVIDER      Provider do modelo de clientes
-#   WHATSAPP_CLIENT_MEDIA_MODEL   Modelo para transcrição/análise de mídia
-#   WHATSAPP_CONTACT_CLASSIFIER_MODEL  Modelo para classificar novos contatos
+# 🤖 MODELOS POR FUNÇÃO (padrão: OpenRouter)
+#   Use slugs do OpenRouter no formato vendor/modelo.
+#   WHATSAPP_OWNER_MODEL          Responder ao dono      (padrão deepseek/deepseek-v4-flash)
+#   WHATSAPP_OWNER_PROVIDER       Provider do dono       (padrão openrouter)
+#   WHATSAPP_CLIENT_MODEL         Responder a clientes   (padrão deepseek/deepseek-v4-flash)
+#   WHATSAPP_CLIENT_PROVIDER      Provider de clientes   (padrão openrouter)
+#   WHATSAPP_CLIENT_MEDIA_MODEL   Transcrição de áudio e leitura de imagem
+#                                 (padrão google/gemini-3.1-flash-lite — precisa ser
+#                                  multimodal; DeepSeek aceita só texto e falharia)
+#   WHATSAPP_CONTACT_CLASSIFIER_MODEL  Classificar novos contatos
+#
+# 💳 VENDA DIRETA
+#   WHATSAPP_PIX_KEY       Chave Pix usada quando o item do catálogo não define a sua.
+#                          Sem default de propósito — preencher errado manda o
+#                          pagamento do cliente para outra conta.
 #
 # 💬 TELEGRAM
 #   TELEGRAM_BOT_TOKEN     Token do bot criado no BotFather
@@ -115,10 +133,16 @@
 #   marcar a opção "Criar arquivo .env" na aba "Ambiente" antes de implantar.
 #   Sem isso o container ignora as variáveis e falha ao iniciar.
 #
-# 🛠️ SETUP INICIAL (após o primeiro deploy):
-#   1. Acesse o Console do serviço no Easypanel
-#   2. Execute: curl -sSL https://raw.githubusercontent.com/leoalvesia/whatsappkit/main/deploy/setup.sh | bash -s leoalvesia
-#   3. O setup.sh clona o workspace e instala o plugin em /opt/data (volume persistido)
+# 🛠️ SETUP INICIAL — não precisa mais rodar nada à mão:
+#   O bloco `command:` abaixo clona o plugin de
+#   https://github.com/${HERMES_SETUP_GITHUB_USER}/whatsappkit a cada boot e escreve
+#   o config.yaml e o perfil de isolamento dos clientes. O setup.sh continua existindo
+#   para instalações manuais, mas não é necessário neste fluxo.
+#
+# 🔄 ATUALIZAR O PLUGIN DEPOIS DE UM `git push`:
+#   Basta reiniciar o serviço no Easypanel — o boot faz fetch + reset --hard na main.
+#   Como é clone de verdade (e não download de arquivos avulsos), arquivos novos
+#   também chegam, não só os que estivessem numa lista fixa.
 #
 # 📱 PAREAR O WHATSAPP (primeiro acesso):
 #   ⚠️  A URL /whatsapp/qr é para RECONEXÃO — não funciona no primeiro pareamento.
@@ -141,7 +165,117 @@ services:
     #image: nousresearch/hermes-agent:v2026.5.16
     image: nousresearch/hermes-agent:v2026.7.20
     restart: unless-stopped
-    command: ["bash", "-c", "git config --global --add safe.directory /opt/data/.hermes/plugins/whatsapp-manager 2>/dev/null || true; python3 -c \"import os, yaml; from plugins.dashboard_auth.basic import hash_password; usr=os.environ.get('HERMES_DASHBOARD_BASIC_AUTH_USERNAME') or 'admin'; pwd=os.environ.get('HERMES_DASHBOARD_PASSWORD') or os.environ.get('API_SERVER_KEY') or 'admin123'; h=hash_password(pwd); paths=['/opt/data/.hermes/config.yaml', os.path.expanduser('~/.hermes/config.yaml')]; [os.makedirs(os.path.dirname(p), exist_ok=True) for p in paths]; exec('''for p in paths:\\n  try:\\n    with open(p,\\\"r\\\") as f: cfg=yaml.safe_load(f) or {}\\n  except Exception: cfg={}\\n  if not isinstance(cfg, dict): cfg={}\\n  dash=cfg.get(\\\"dashboard\\\")\\n  if not isinstance(dash, dict): dash={\\\"enabled\\\": True, \\\"host\\\": \\\"0.0.0.0\\\", \\\"port\\\": 9119}\\n  dash[\\\"enabled\\\"]=True; dash[\\\"host\\\"]=\\\"0.0.0.0\\\"; dash[\\\"port\\\"]=9119\\n  dash[\\\"basic_auth\\\"]={\\\"username\\\": usr, \\\"password_hash\\\": h}\\n  cfg[\\\"dashboard\\\"]=dash\\n  cfg[\\\"session_reset\\\"]={\\\"notify_user\\\": False}\\n  disp=cfg.get(\\\"display\\\") or {}\\n  if not isinstance(disp, dict): disp={}\\n  disp[\\\"show_system_header\\\"]=False\\n  disp[\\\"tool_progress\\\"]=\\\"off\\\"\\n  disp[\\\"platforms\\\"]={\\\"whatsapp\\\": {\\\"tool_progress\\\": \\\"off\\\"}}\\n  cfg[\\\"display\\\"]=disp\\n  with open(p,\\\"w\\\") as f: yaml.dump(cfg, f, default_flow_style=False)\\n  wa_p='/opt/data/.hermes/profiles/whatsapp/config.yaml'\\n  os.makedirs(os.path.dirname(wa_p), exist_ok=True)\\n  ts_list=['file_operations','code_execution','vision','image_generation','video_analysis','video_generation','web_search','browser','terminal','text_to_speech','skills','task_planning','todo','memory','context_engine','session_search','clarifying_questions','clarify','task_delegation','delegate_task','cronjob','cron_jobs','home_assistant','spotify','discord','discord_admin','yuanbao','computer_use','x_search','twitter_search']\\n  wa_cfg={'model': {'default': 'gemini-3.1-flash-lite', 'provider': 'gemini'}, 'agent': {'tool_use_enforcement': 'disabled'}, 'toolsets': [], 'disabled_toolsets': ts_list, 'tools': [], 'skills': {'enabled': False}, 'terminal': {'backend': 'disabled'}, 'display': {'show_system_header': False, 'tool_progress': 'off'}}\\n  with open(wa_p, \\\"w\\\") as f: yaml.dump(wa_cfg, f, default_flow_style=False)\\n''')\" 2>/dev/null; exec hermes gateway run"]
+    # O bloco abaixo roda a cada boot, ANTES do gateway. Ele e autossuficiente de
+    # proposito: o perfil de isolamento dos clientes (toolsets vazios) e escrito aqui,
+    # nao no repositorio clonado. Se o clone falhar, o container ainda sobe seguro em
+    # vez de liberar terminal e leitura de arquivos para quem manda mensagem.
+    command:
+      - bash
+      - -c
+      - |
+        PLUGIN_DIR=/opt/data/.hermes/plugins/whatsapp-manager
+        REPO_URL="https://github.com/${HERMES_SETUP_GITHUB_USER:-leoalvesia}/whatsappkit"
+
+        # 1) Codigo do plugin via git clone de verdade. O setup.sh original baixava 9
+        #    arquivos avulsos, sem .git — o que fazia o auto-update cair no fallback e
+        #    nunca propagar arquivos novos. Com clone, um push seguido de restart basta.
+        git config --global --add safe.directory "$PLUGIN_DIR" 2>/dev/null || true
+        if [ -d "$PLUGIN_DIR/.git" ]; then
+          git -C "$PLUGIN_DIR" remote set-url origin "$REPO_URL" 2>/dev/null || true
+          if git -C "$PLUGIN_DIR" fetch --depth 1 origin main 2>/dev/null; then
+            git -C "$PLUGIN_DIR" reset --hard FETCH_HEAD >/dev/null 2>&1 || true
+            echo "[setup] plugin atualizado de $REPO_URL"
+          else
+            echo "[setup] fetch falhou; seguindo com o codigo ja presente no volume"
+          fi
+        else
+          rm -rf "$PLUGIN_DIR"
+          if git clone --depth 1 "$REPO_URL" "$PLUGIN_DIR" 2>/dev/null; then
+            echo "[setup] plugin clonado de $REPO_URL"
+          else
+            echo "[setup] AVISO: clone falhou e nao ha codigo no volume — o plugin nao vai carregar"
+          fi
+        fi
+
+        # 2) Personas a partir do proprio clone, so se ainda nao existirem no volume.
+        #    O register() do plugin baixa esses arquivos do GitHub quando faltam; tendo
+        #    o clone local, esse download deixa de acontecer.
+        for f in SOUL.md SOUL_WHATSAPP.md SOUL_EMAIL.md support_rules.md; do
+          if [ ! -f "/opt/data/$f" ] && [ -f "$PLUGIN_DIR/deploy/$f" ]; then
+            cp "$PLUGIN_DIR/deploy/$f" "/opt/data/$f"
+            echo "[setup] $f inicializado a partir do repositorio"
+          fi
+        done
+
+        # 3) config.yaml do core e perfil de isolamento dos clientes.
+        python3 - <<'PYCFG'
+        import os, yaml
+        from plugins.dashboard_auth.basic import hash_password
+
+        usr = os.environ.get('HERMES_DASHBOARD_BASIC_AUTH_USERNAME') or 'admin'
+        pwd = (os.environ.get('HERMES_DASHBOARD_PASSWORD')
+               or os.environ.get('API_SERVER_KEY') or 'admin123')
+
+        # Modelo e provider vem do ambiente. Antes estavam fixos em gemini aqui dentro,
+        # o que sobrescrevia as variaveis do painel a cada boot e fazia o agente de
+        # cliente continuar chamando o Gemini mesmo com tudo configurado para OpenRouter.
+        client_model = os.environ.get('WHATSAPP_CLIENT_MODEL') or 'deepseek/deepseek-v4-flash'
+        client_provider = os.environ.get('WHATSAPP_CLIENT_PROVIDER') or 'openrouter'
+        owner_model = os.environ.get('WHATSAPP_OWNER_MODEL') or client_model
+        owner_provider = os.environ.get('WHATSAPP_OWNER_PROVIDER') or client_provider
+
+        for path in ['/opt/data/.hermes/config.yaml',
+                     os.path.expanduser('~/.hermes/config.yaml')]:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            try:
+                with open(path) as f:
+                    cfg = yaml.safe_load(f) or {}
+            except Exception:
+                cfg = {}
+            if not isinstance(cfg, dict):
+                cfg = {}
+            dash = cfg.get('dashboard')
+            if not isinstance(dash, dict):
+                dash = {}
+            dash.update({'enabled': True, 'host': '0.0.0.0', 'port': 9119,
+                         'basic_auth': {'username': usr, 'password_hash': hash_password(pwd)}})
+            cfg['dashboard'] = dash
+            cfg['session_reset'] = {'notify_user': False}
+            disp = cfg.get('display')
+            if not isinstance(disp, dict):
+                disp = {}
+            disp.update({'show_system_header': False, 'tool_progress': 'off',
+                         'platforms': {'whatsapp': {'tool_progress': 'off'}}})
+            cfg['display'] = disp
+            cfg['model'] = {'default': owner_model, 'provider': owner_provider}
+            with open(path, 'w') as f:
+                yaml.dump(cfg, f, default_flow_style=False)
+
+        # Perfil "whatsapp" = clientes. Nenhuma ferramenta habilitada; o hook
+        # pre_tool_call do plugin e a segunda camada, no backend.
+        disabled = ['file_operations', 'code_execution', 'vision', 'image_generation',
+                    'video_analysis', 'video_generation', 'web_search', 'browser',
+                    'terminal', 'text_to_speech', 'skills', 'task_planning', 'todo',
+                    'memory', 'context_engine', 'session_search', 'clarifying_questions',
+                    'clarify', 'task_delegation', 'delegate_task', 'cronjob', 'cron_jobs',
+                    'home_assistant', 'spotify', 'discord', 'discord_admin', 'yuanbao',
+                    'computer_use', 'x_search', 'twitter_search']
+        wa_path = '/opt/data/.hermes/profiles/whatsapp/config.yaml'
+        os.makedirs(os.path.dirname(wa_path), exist_ok=True)
+        with open(wa_path, 'w') as f:
+            yaml.dump({
+                'model': {'default': client_model, 'provider': client_provider},
+                'agent': {'tool_use_enforcement': 'disabled'},
+                'toolsets': [], 'disabled_toolsets': disabled, 'tools': [],
+                'skills': {'enabled': False},
+                'terminal': {'backend': 'disabled'},
+                'display': {'show_system_header': False, 'tool_progress': 'off'},
+            }, f, default_flow_style=False)
+        print('[setup] config.yaml e perfil whatsapp escritos (modelo cliente: %s via %s)'
+              % (client_model, client_provider))
+        PYCFG
+
+        exec hermes gateway run
 
     volumes:
       # Volume principal: persiste /opt/data (workspace, plugins, sessão WhatsApp, banco SQLite)
@@ -193,13 +327,27 @@ services:
       - WHATSAPP_DEBOUNCE_DECAY=${WHATSAPP_DEBOUNCE_DECAY:-0.6}
       - WHATSAPP_DEBOUNCE_SKIP_SELF_CHAT=${WHATSAPP_DEBOUNCE_SKIP_SELF_CHAT:-true}
 
-      # Modelos por função — todos usam Gemini por padrão (requer GOOGLE_API_KEY)
-      - WHATSAPP_OWNER_MODEL=${WHATSAPP_OWNER_MODEL:-gemini-3.1-flash-lite}
-      - WHATSAPP_OWNER_PROVIDER=${WHATSAPP_OWNER_PROVIDER:-gemini}
-      - WHATSAPP_CLIENT_MODEL=${WHATSAPP_CLIENT_MODEL:-gemini-3.1-flash-lite}
-      - WHATSAPP_CLIENT_PROVIDER=${WHATSAPP_CLIENT_PROVIDER:-gemini}
-      - WHATSAPP_CLIENT_MEDIA_MODEL=${WHATSAPP_CLIENT_MEDIA_MODEL:-gemini-3.1-flash-lite}
-      - WHATSAPP_CONTACT_CLASSIFIER_MODEL=${WHATSAPP_CONTACT_CLASSIFIER_MODEL:-gemini-3.1-flash-lite}
+      # Modelos por função — padrão OpenRouter (requer OPENROUTER_API_KEY).
+      #
+      # O plugin tenta os providers nesta ordem: Google -> OpenAI -> OpenRouter, e usa o
+      # primeiro cuja chave estiver preenchida. Para rodar 100% por OpenRouter, deixe
+      # GOOGLE_API_KEY e OPENAI_API_KEY vazias — senão elas vencem e o OpenRouter nunca
+      # é alcançado.
+      #
+      # Os slugs abaixo precisam ser os do OpenRouter (vendor/modelo). DeepSeek aceita
+      # apenas texto, então mídia (áudio e imagem) tem de ir para um modelo multimodal —
+      # daí o Gemini via OpenRouter no MEDIA_MODEL.
+      - WHATSAPP_OWNER_MODEL=${WHATSAPP_OWNER_MODEL:-deepseek/deepseek-v4-flash}
+      - WHATSAPP_OWNER_PROVIDER=${WHATSAPP_OWNER_PROVIDER:-openrouter}
+      - WHATSAPP_CLIENT_MODEL=${WHATSAPP_CLIENT_MODEL:-deepseek/deepseek-v4-flash}
+      - WHATSAPP_CLIENT_PROVIDER=${WHATSAPP_CLIENT_PROVIDER:-openrouter}
+      - WHATSAPP_CLIENT_MEDIA_MODEL=${WHATSAPP_CLIENT_MEDIA_MODEL:-google/gemini-3.1-flash-lite}
+      - WHATSAPP_CONTACT_CLASSIFIER_MODEL=${WHATSAPP_CONTACT_CLASSIFIER_MODEL:-deepseek/deepseek-v4-flash}
+
+      # Chave Pix do dono, usada quando o item do catálogo não define a sua.
+      # Sem default de propósito: uma chave errada aqui manda o pagamento do cliente
+      # para a conta errada.
+      - WHATSAPP_PIX_KEY=${WHATSAPP_PIX_KEY:-}
 
       # Gateway
       - GATEWAY_ALLOW_ALL_USERS=${GATEWAY_ALLOW_ALL_USERS:-false}

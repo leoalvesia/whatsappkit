@@ -529,28 +529,52 @@ def _process_media_message(event) -> str | None:
         except Exception as e:
             logger.warning(f"[media] OpenAI falhou: {e}")
 
-    # --- OpenRouter (Gemini via OR — mesmo formato pra áudio e imagem) ---
+    # --- OpenRouter ---
+    # Imagem usa `image_url` com data URI. Áudio usa `input_audio`, o formato
+    # OpenAI-compatível que o OpenRouter documenta — antes o áudio ia dentro de
+    # `image_url`, o que só funcionaria se o roteador aceitasse data URI de qualquer
+    # tipo no campo de imagem. Como o PTT do WhatsApp é OGG/Opus e a documentação cita
+    # wav/mp3, a tentativa antiga fica como fallback em vez de sumir: se o modelo aceitar
+    # OGG por data URI, ainda transcreve.
     if openrouter_key and parts:
-        try:
-            if media_type in ["ptt", "audio"]:
-                audio_part = parts[0]
-                content = [
-                    {"type": "image_url", "image_url": {"url": f"data:{audio_part['inlineData']['mimeType']};base64,{audio_part['inlineData']['data']}"}},
-                    {"type": "text", "text": prompt},
-                ]
-            else:
-                content = [
-                    {"type": "image_url", "image_url": {"url": f"data:{p['inlineData']['mimeType']};base64,{p['inlineData']['data']}"}}
-                    for p in parts
-                ] + [{"type": "text", "text": prompt}]
-            or_model = media_model or "google/gemini-flash-1.5-8b"
+        or_model = media_model or "google/gemini-flash-1.5-8b"
+        or_url = "https://openrouter.ai/api/v1/chat/completions"
+        or_headers = {"Content-Type": "application/json", "Authorization": f"Bearer {openrouter_key}"}
+
+        def _or_send(content):
             payload = {"model": or_model, "messages": [{"role": "user", "content": content}]}
-            req = urllib.request.Request("https://openrouter.ai/api/v1/chat/completions", data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", "Authorization": f"Bearer {openrouter_key}"}, method="POST")
+            req = urllib.request.Request(
+                or_url, data=json.dumps(payload).encode(), headers=or_headers, method="POST"
+            )
             with urllib.request.urlopen(req, timeout=45) as resp:
                 result = json.loads(resp.read().decode())
                 return result["choices"][0]["message"]["content"].strip()
-        except Exception as e:
-            logger.warning(f"[media] OpenRouter falhou: {e}")
+
+        def _data_uri_content(items):
+            return [
+                {"type": "image_url", "image_url": {"url": f"data:{p['inlineData']['mimeType']};base64,{p['inlineData']['data']}"}}
+                for p in items
+            ] + [{"type": "text", "text": prompt}]
+
+        if media_type in ["ptt", "audio"]:
+            audio_part = parts[0]
+            mime = audio_part["inlineData"]["mimeType"]
+            fmt = "wav" if "wav" in mime else "mp3" if "mp3" in mime else "ogg" if "ogg" in mime else "mp4" if "mp4" in mime else "wav"
+            attempts = [
+                [
+                    {"type": "input_audio", "input_audio": {"data": audio_part["inlineData"]["data"], "format": fmt}},
+                    {"type": "text", "text": prompt},
+                ],
+                _data_uri_content([audio_part]),
+            ]
+        else:
+            attempts = [_data_uri_content(parts)]
+
+        for idx, content in enumerate(attempts):
+            try:
+                return _or_send(content)
+            except Exception as e:
+                logger.warning(f"[media] OpenRouter falhou (tentativa {idx + 1}/{len(attempts)}): {e}")
 
     logger.error("[media] Todos os provedores falharam para transcrição de mídia.")
     return None
@@ -3562,6 +3586,12 @@ def _notify_owner_if_push_failed(push_fn, what: str) -> None:
     retornar False. Usado em threads de background para que uma falha de sync com o GitHub
     (rede, API, permissão) nunca fique 100% silenciosa — sem isso, o próximo pull periódico
     pode sobrescrever a edição local que nunca chegou a ser publicada."""
+    # Sync com GitHub é opcional. Sem repo/token configurados não existe "falha de push":
+    # existe ausência de sync, que é uma escolha. Avisar nesse caso enchia o WhatsApp do
+    # dono a cada contato salvo, venda registrada e item de catálogo alterado.
+    if not (config.config_repo and config.config_github_token):
+        return
+
     try:
         ok = push_fn()
         if not ok:
